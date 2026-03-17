@@ -53,7 +53,42 @@ function createInfshProviderWithApp({ infshAppId }) {
   };
 }
 
-export function resolveMusicProvider({ mode = "mock", infshAppId } = {}) {
+function createElevenLabsProviderWithKey({ elevenLabsApiKey }) {
+  return {
+    name: "elevenlabs",
+    timeoutSec: 180,
+    maxRetries: 1,
+    prepareRequest({ prompt, durationSec }) {
+      return {
+        method: "POST",
+        url: "https://api.elevenlabs.io/v1/music?output_format=pcm_44100",
+        headers: {
+          "xi-api-key": elevenLabsApiKey,
+          "content-type": "application/json"
+        },
+        body: {
+          model_id: "music_v1",
+          prompt,
+          music_length_ms: durationSec * 1000
+        }
+      };
+    },
+    async normalizeResult(input) {
+      return {
+        path: input?.path ?? "jobs/job_001/master_audio.wav",
+        audioSpec: createAudioSpec()
+      };
+    }
+  };
+}
+
+export function resolveMusicProvider({ mode = "mock", infshAppId, elevenLabsApiKey } = {}) {
+  if (mode === "elevenlabs") {
+    if (!elevenLabsApiKey) {
+      throw new Error("elevenlabs_api_key_required");
+    }
+    return createElevenLabsProviderWithKey({ elevenLabsApiKey });
+  }
   if (mode === "infsh") {
     if (!infshAppId) {
       throw new Error("infsh_app_id_required");

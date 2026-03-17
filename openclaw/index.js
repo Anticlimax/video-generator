@@ -16,6 +16,11 @@ async function writePlaceholderFile(filePath, contents) {
   await fs.writeFile(filePath, contents, "utf8");
 }
 
+async function writeBinaryFile(filePath, contents) {
+  await ensureParentDir(filePath);
+  await fs.writeFile(filePath, contents);
+}
+
 async function statSize(filePath) {
   const stats = await fs.stat(filePath);
   return stats.size;
@@ -101,7 +106,8 @@ async function runAmbientMusicBuild(api, args) {
 
   const provider = resolveMusicProvider({
     mode: args?.mode || api?.config?.mode || "mock",
-    infshAppId: api?.config?.infshAppId
+    infshAppId: api?.config?.infshAppId,
+    elevenLabsApiKey: api?.config?.elevenLabsApiKey
   });
   const job = await createJobWorkspace();
   const prompt = buildMusicPrompt({
@@ -124,6 +130,46 @@ async function runAmbientMusicBuild(api, args) {
       `sine=frequency=220:duration=${durationSec}`,
       "-af",
       "volume=0.05",
+      "-ar",
+      "48000",
+      "-ac",
+      "2",
+      job.masterAudioPath
+    ]);
+  } else if (provider.name === "elevenlabs") {
+    const request = provider.prepareRequest({
+      prompt,
+      durationSec
+    });
+    const fetchImpl = api?.config?.fetchImpl || globalThis.fetch;
+    if (!fetchImpl) {
+      throw new Error("fetch_unavailable");
+    }
+
+    const response = await fetchImpl(request.url, {
+      method: request.method,
+      headers: request.headers,
+      body: JSON.stringify(request.body)
+    });
+
+    if (!response.ok) {
+      throw new Error(`elevenlabs_request_failed_${response.status}`);
+    }
+
+    const pcmPath = path.join(job.jobDir, "master_audio.pcm");
+    const pcmBuffer = Buffer.from(await response.arrayBuffer());
+    await writeBinaryFile(pcmPath, pcmBuffer);
+
+    await runCommand("ffmpeg", [
+      "-y",
+      "-f",
+      "s16le",
+      "-ar",
+      "44100",
+      "-ac",
+      "2",
+      "-i",
+      pcmPath,
       "-ar",
       "48000",
       "-ac",

@@ -81,3 +81,87 @@ test("ambient_music_build can construct an infsh provider from plugin config", a
   assert.equal(result.data.audio_spec.format, "wav");
   assert.match(result.data.master_audio_path, /master_audio\.wav$/);
 });
+
+test("ambient_music_build can construct an elevenlabs provider from plugin config", async () => {
+  const tools = [];
+  const pcmBytes = Buffer.alloc(44100 * 2 * 2, 0);
+  registerAmbientTools({
+    registerTool(tool) {
+      tools.push(tool);
+    },
+    config: {
+      elevenLabsApiKey: "test-key",
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        async arrayBuffer() {
+          return pcmBytes.buffer.slice(
+            pcmBytes.byteOffset,
+            pcmBytes.byteOffset + pcmBytes.byteLength
+          );
+        }
+      })
+    }
+  });
+
+  const tool = tools.find((item) => item.name === "ambient_music_build");
+  const result = await tool.execute("call_3", {
+    theme_id: "sleep-piano",
+    duration_target_sec: 30,
+    seed: "seed-3",
+    mode: "elevenlabs"
+  });
+
+  assert.equal(result.data.ok, true);
+  assert.equal(result.data.audio_spec.format, "wav");
+  assert.match(result.data.master_audio_path, /master_audio\.wav$/);
+});
+
+test("ambient_music_build writes a probeable wav when elevenlabs returns pcm audio", async () => {
+  const tools = [];
+  let fetchCalls = 0;
+  const sampleRate = 44100;
+  const channels = 2;
+  const durationSec = 2;
+  const pcmBytes = Buffer.alloc(sampleRate * channels * durationSec * 2, 0);
+
+  registerAmbientTools({
+    registerTool(tool) {
+      tools.push(tool);
+    },
+    config: {
+      elevenLabsApiKey: "test-key",
+      fetchImpl: async (url, options) => {
+        fetchCalls += 1;
+        assert.equal(url, "https://api.elevenlabs.io/v1/music?output_format=pcm_44100");
+        assert.equal(options.method, "POST");
+        assert.equal(options.headers["xi-api-key"], "test-key");
+        return {
+          ok: true,
+          status: 200,
+          async arrayBuffer() {
+            return pcmBytes.buffer.slice(
+              pcmBytes.byteOffset,
+              pcmBytes.byteOffset + pcmBytes.byteLength
+            );
+          }
+        };
+      }
+    }
+  });
+
+  const tool = tools.find((item) => item.name === "ambient_music_build");
+  const result = await tool.execute("call_4", {
+    theme_id: "sleep-piano",
+    duration_target_sec: durationSec,
+    seed: "seed-4",
+    mode: "elevenlabs"
+  });
+
+  assert.equal(fetchCalls, 1);
+  const probe = probeJson(result.data.master_audio_path);
+  assert.equal(probe.format.format_name, "wav");
+  assert.equal(probe.streams[0].codec_type, "audio");
+  assert.equal(Number(probe.streams[0].sample_rate), 48000);
+  assert.equal(probe.streams[0].channels, 2);
+});

@@ -8,7 +8,10 @@
     "properties": {
       "mode": {
         "type": "string",
-        "enum": ["mock", "infsh"]
+        "enum": ["mock", "elevenlabs", "infsh"]
+      },
+      "elevenLabsApiKey": {
+        "type": "string"
       },
       "infshAppId": {
         "type": "string"

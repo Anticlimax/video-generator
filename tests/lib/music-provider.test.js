@@ -42,3 +42,31 @@ test("infsh provider rejects missing app id", () => {
     /infsh_app_id_required/
   );
 });
+
+test("elevenlabs provider requires an api key and builds a compose request", () => {
+  const provider = resolveMusicProvider({
+    mode: "elevenlabs",
+    elevenLabsApiKey: "test-key"
+  });
+
+  const request = provider.prepareRequest({
+    prompt: "soft ambient piano for sleep, low dynamics, no percussion",
+    durationSec: 120
+  });
+
+  assert.equal(provider.name, "elevenlabs");
+  assert.equal(request.method, "POST");
+  assert.equal(request.url, "https://api.elevenlabs.io/v1/music?output_format=pcm_44100");
+  assert.equal(request.headers["xi-api-key"], "test-key");
+  assert.equal(request.headers["content-type"], "application/json");
+  assert.equal(request.body.music_length_ms, 120000);
+  assert.equal(request.body.model_id, "music_v1");
+  assert.match(request.body.prompt, /soft ambient piano/i);
+});
+
+test("elevenlabs provider rejects missing api key", () => {
+  assert.throws(
+    () => resolveMusicProvider({ mode: "elevenlabs" }),
+    /elevenlabs_api_key_required/
+  );
+});
