@@ -1,8 +1,52 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { registerAmbientTools } from "../../openclaw/index.js";
 
-test("ambient_media_render returns stable output paths, ffprobe_summary, and file sizes", async () => {
+function createSampleAudio(filePath) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const result = spawnSync(
+    "ffmpeg",
+    [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=220:duration=2",
+      "-ar",
+      "48000",
+      "-ac",
+      "2",
+      filePath
+    ],
+    { encoding: "utf8" }
+  );
+  assert.equal(result.status, 0, result.stderr);
+}
+
+function probeJson(filePath) {
+  const result = spawnSync(
+    "ffprobe",
+    [
+      "-v",
+      "error",
+      "-show_entries",
+      "stream=codec_type",
+      "-show_entries",
+      "format=duration,size",
+      "-of",
+      "json",
+      filePath
+    ],
+    { encoding: "utf8" }
+  );
+  assert.equal(result.status, 0, result.stderr);
+  return JSON.parse(result.stdout);
+}
+
+test("ambient_media_render produces a playable mp4 with audio and video streams", async () => {
   const tools = [];
   registerAmbientTools({
     registerTool(tool) {
@@ -11,10 +55,13 @@ test("ambient_media_render returns stable output paths, ffprobe_summary, and fil
     config: {}
   });
 
+  const masterAudioPath = path.join("jobs", "job_seed", "master_audio.wav");
+  createSampleAudio(masterAudioPath);
+
   const tool = tools.find((item) => item.name === "ambient_media_render");
   const result = await tool.execute("call_1", {
-    master_audio_path: "jobs/job_seed/master_audio.wav",
-    duration_target_sec: 240,
+    master_audio_path: masterAudioPath,
+    duration_target_sec: 4,
     video_template_id: "default-black",
     output_name: "sleep-piano-4m",
     mix_profile: {}
@@ -23,7 +70,11 @@ test("ambient_media_render returns stable output paths, ffprobe_summary, and fil
   assert.equal(result.data.ok, true);
   assert.match(result.data.audio_output_path, /extended_audio\.wav$/);
   assert.match(result.data.video_output_path, /loop_video\.mp4$/);
-  assert.equal(result.data.ffprobe_summary.video_streams, 1);
-  assert.equal(result.data.ffprobe_summary.audio_streams, 1);
   assert.equal(typeof result.data.file_sizes.final_bytes, "number");
+
+  const probe = probeJson(result.data.final_output_path);
+  const streamKinds = probe.streams.map((stream) => stream.codec_type).sort();
+  assert.deepEqual(streamKinds, ["audio", "video"]);
+  assert.ok(Number(probe.format.duration) >= 3.5);
+  assert.ok(Number(probe.format.size) > 0);
 });

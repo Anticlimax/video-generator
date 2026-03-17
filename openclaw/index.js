@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { spawn } from "node:child_process";
 import { loadThemeRegistry } from "../src/lib/theme-registry.js";
 import { createJobWorkspace, writeManifest } from "../src/lib/jobs.js";
 import { buildMusicPrompt } from "../src/lib/music-prompt.js";
@@ -18,6 +19,65 @@ async function writePlaceholderFile(filePath, contents) {
 async function statSize(filePath) {
   const stats = await fs.stat(filePath);
   return stats.size;
+}
+
+function runCommand(command, args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    let stderr = "";
+
+    child.stderr.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(new Error(`${command} exited with code ${code}\n${stderr}`));
+    });
+  });
+}
+
+async function probeMedia(filePath) {
+  const outputChunks = [];
+  await new Promise((resolve, reject) => {
+    const child = spawn(
+      "ffprobe",
+      [
+        "-v",
+        "error",
+        "-show_entries",
+        "stream=codec_type",
+        "-show_entries",
+        "format=duration,size",
+        "-of",
+        "json",
+        filePath
+      ],
+      { stdio: ["ignore", "pipe", "pipe"] }
+    );
+
+    let stderr = "";
+    child.stdout.on("data", (chunk) => outputChunks.push(String(chunk)));
+    child.stderr.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(new Error(`ffprobe exited with code ${code}\n${stderr}`));
+    });
+  });
+
+  return JSON.parse(outputChunks.join(""));
 }
 
 function toolResult(data) {
@@ -51,17 +111,38 @@ async function runAmbientMusicBuild(api, args) {
   const normalized = await provider.normalizeResult({
     path: job.masterAudioPath
   });
+  const durationSec = Number(args?.duration_target_sec || theme.default_duration_sec || 0);
 
-  await writePlaceholderFile(
-    job.masterAudioPath,
-    `mock ambient master\n${prompt}\nseed=${args?.seed || ""}\n`
-  );
+  if (provider.name === "mock") {
+    await ensureParentDir(job.masterAudioPath);
+    await runCommand("ffmpeg", [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      `sine=frequency=220:duration=${durationSec}`,
+      "-af",
+      "volume=0.05",
+      "-ar",
+      "48000",
+      "-ac",
+      "2",
+      job.masterAudioPath
+    ]);
+  } else {
+    await writePlaceholderFile(
+      job.masterAudioPath,
+      `provider=${provider.name}\n${prompt}\nseed=${args?.seed || ""}\n`
+    );
+  }
 
   await writeManifest(job, {
     ok: true,
     stage: "ambient_music_build",
     themeId: theme.id,
-    themeVersion: theme.version
+    themeVersion: theme.version,
+    prompt,
+    provider: provider.name
   });
 
   return toolResult({
@@ -70,7 +151,7 @@ async function runAmbientMusicBuild(api, args) {
     theme_id: theme.id,
     theme_version: theme.version,
     master_audio_path: job.masterAudioPath,
-    master_duration_sec: Number(args?.duration_target_sec || theme.default_duration_sec || 0),
+    master_duration_sec: durationSec,
     loop_strategy: "crossfade_loop",
     audio_spec: normalized.audioSpec,
     qc_notes: ["low-dynamics", "loop-safe-prompt"]
@@ -86,10 +167,61 @@ async function runAmbientMediaRender(_api, args) {
     durationTargetSec: Number(args?.duration_target_sec || 0),
     videoTemplateId: String(args?.video_template_id || "default-black")
   });
+  const masterAudioPath = String(args?.master_audio_path || "").trim();
+  const durationSec = Number(args?.duration_target_sec || 0);
 
-  await writePlaceholderFile(job.extendedAudioPath, "mock extended audio\n");
-  await writePlaceholderFile(job.loopVideoPath, "mock loop video\n");
-  await writePlaceholderFile(finalOutputPath, "mock final mp4\n");
+  await ensureParentDir(job.extendedAudioPath);
+  await ensureParentDir(job.loopVideoPath);
+  await ensureParentDir(finalOutputPath);
+
+  await runCommand("ffmpeg", [
+    "-y",
+    "-stream_loop",
+    "-1",
+    "-i",
+    masterAudioPath,
+    "-t",
+    String(durationSec),
+    "-af",
+    `loudnorm=I=${plan.audio.targetLufs}`,
+    "-ar",
+    "48000",
+    "-ac",
+    "2",
+    job.extendedAudioPath
+  ]);
+
+  await runCommand("ffmpeg", [
+    "-y",
+    "-f",
+    "lavfi",
+    "-i",
+    "color=c=black:s=1280x720:r=24",
+    "-t",
+    String(durationSec),
+    "-pix_fmt",
+    "yuv420p",
+    "-c:v",
+    "libx264",
+    job.loopVideoPath
+  ]);
+
+  await runCommand("ffmpeg", [
+    "-y",
+    "-i",
+    job.loopVideoPath,
+    "-i",
+    job.extendedAudioPath,
+    "-shortest",
+    "-c:v",
+    "copy",
+    "-c:a",
+    "aac",
+    finalOutputPath
+  ]);
+
+  const probe = await probeMedia(finalOutputPath);
+  await fs.writeFile(job.ffprobePath, `${JSON.stringify(probe, null, 2)}\n`, "utf8");
 
   const fileSizes = {
     audio_bytes: await statSize(job.extendedAudioPath),
@@ -111,10 +243,10 @@ async function runAmbientMediaRender(_api, args) {
     audio_output_path: job.extendedAudioPath,
     video_output_path: job.loopVideoPath,
     final_output_path: finalOutputPath,
-    duration_sec: Number(args?.duration_target_sec || 0),
+    duration_sec: durationSec,
     ffprobe_summary: {
-      video_streams: 1,
-      audio_streams: 1
+      video_streams: (probe.streams || []).filter((stream) => stream.codec_type === "video").length,
+      audio_streams: (probe.streams || []).filter((stream) => stream.codec_type === "audio").length
     },
     file_sizes: fileSizes,
     render_manifest_path: path.join(job.jobDir, "manifest.json")
