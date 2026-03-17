@@ -22,7 +22,9 @@ test("buildVideoLoopArgs builds a drifting star field for soft-stars", () => {
   });
   const command = args.join(" ");
   assert.match(command, /drawbox=/);
-  assert.match(command, /color=c=black/);
+  assert.match(command, /color=c=0x030611/);
+  assert.ok(command.split("drawbox=").length - 1 >= 16);
+  assert.match(command, /eq=brightness=/);
   assert.match(command, /libx264/);
 });
 
