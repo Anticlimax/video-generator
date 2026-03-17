@@ -57,3 +57,27 @@ test("ambient_music_build accepts a standardized theme_id, writes a job manifest
   assert.equal(probe.streams[0].channels, 2);
   assert.ok(Number(probe.format.duration) >= 239);
 });
+
+test("ambient_music_build can construct an infsh provider from plugin config", async () => {
+  const tools = [];
+  registerAmbientTools({
+    registerTool(tool) {
+      tools.push(tool);
+    },
+    config: {
+      infshAppId: "example/ambient-audio@latest"
+    }
+  });
+
+  const tool = tools.find((item) => item.name === "ambient_music_build");
+  const result = await tool.execute("call_2", {
+    theme_id: "sleep-piano",
+    duration_target_sec: 30,
+    seed: "seed-2",
+    mode: "infsh"
+  });
+
+  assert.equal(result.data.ok, true);
+  assert.equal(result.data.audio_spec.format, "wav");
+  assert.match(result.data.master_audio_path, /master_audio\.wav$/);
+});

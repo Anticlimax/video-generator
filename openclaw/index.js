@@ -100,7 +100,8 @@ async function runAmbientMusicBuild(api, args) {
   }
 
   const provider = resolveMusicProvider({
-    mode: args?.mode || api?.config?.mode || "mock"
+    mode: args?.mode || api?.config?.mode || "mock",
+    infshAppId: api?.config?.infshAppId
   });
   const job = await createJobWorkspace();
   const prompt = buildMusicPrompt({

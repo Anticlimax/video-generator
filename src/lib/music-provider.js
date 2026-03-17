@@ -21,11 +21,29 @@ function createMockProvider() {
   };
 }
 
-function createInfshProvider() {
+function createInfshProviderWithApp({ infshAppId }) {
   return {
     name: "infsh",
     timeoutSec: 180,
     maxRetries: 1,
+    prepareRequest({ prompt, durationSec }) {
+      return {
+        command: "infsh",
+        args: [
+          "app",
+          "run",
+          infshAppId,
+          "--input",
+          JSON.stringify({
+            prompt,
+            duration_sec: durationSec,
+            format: "wav",
+            sample_rate: 48000,
+            channels: 2
+          })
+        ]
+      };
+    },
     async normalizeResult(input) {
       return {
         path: input?.path ?? "jobs/job_001/master_audio.wav",
@@ -35,9 +53,12 @@ function createInfshProvider() {
   };
 }
 
-export function resolveMusicProvider({ mode = "mock" } = {}) {
+export function resolveMusicProvider({ mode = "mock", infshAppId } = {}) {
   if (mode === "infsh") {
-    return createInfshProvider();
+    if (!infshAppId) {
+      throw new Error("infsh_app_id_required");
+    }
+    return createInfshProviderWithApp({ infshAppId });
   }
   return createMockProvider();
 }
