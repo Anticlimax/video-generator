@@ -13,6 +13,6 @@ test("registerAmbientTools registers ambient_music_build and ambient_media_rende
 
   assert.deepEqual(
     tools.map((tool) => tool.name),
-    ["ambient_music_build", "ambient_media_render"]
+    ["ambient_music_build", "ambient_media_render", "ambient_video_generate"]
   );
 });

@@ -289,6 +289,45 @@ async function runAmbientMediaRender(_api, args) {
   });
 }
 
+async function runAmbientVideoGenerate(api, args) {
+  const registry = await loadThemeRegistry();
+  const theme = registry.get(String(args?.theme_id || "").trim());
+  if (!theme) {
+    throw new Error("theme_not_found");
+  }
+
+  const durationSec = Number(args?.duration_target_sec || theme.default_duration_sec || 0);
+  const musicResult = await runAmbientMusicBuild(api, {
+    theme_id: theme.id,
+    duration_target_sec: durationSec,
+    seed: args?.seed,
+    mode: args?.mode
+  });
+
+  const outputName =
+    String(args?.output_name || `${theme.id}-${durationSec}s`).trim() || `${theme.id}-${durationSec}s`;
+
+  const renderResult = await runAmbientMediaRender(api, {
+    master_audio_path: musicResult.data.master_audio_path,
+    duration_target_sec: durationSec,
+    video_template_id: String(args?.video_template_id || theme.video_template_id || "default-black"),
+    output_name: outputName
+  });
+
+  return toolResult({
+    ok: true,
+    theme_id: theme.id,
+    theme_version: theme.version,
+    master_job_id: musicResult.data.job_id,
+    render_job_id: renderResult.data.job_id,
+    master_audio_path: musicResult.data.master_audio_path,
+    final_output_path: renderResult.data.final_output_path,
+    duration_sec: durationSec,
+    ffprobe_summary: renderResult.data.ffprobe_summary,
+    file_sizes: renderResult.data.file_sizes
+  });
+}
+
 export function registerAmbientTools(api) {
   api.registerTool({
     name: "ambient_music_build",
@@ -303,6 +342,14 @@ export function registerAmbientTools(api) {
     description: "Extend audio, loop video, and export a final MP4",
     async execute(_callId, args) {
       return runAmbientMediaRender(api, args);
+    }
+  });
+
+  api.registerTool({
+    name: "ambient_video_generate",
+    description: "Build ambient music and render the final ambient video in one call",
+    async execute(_callId, args) {
+      return runAmbientVideoGenerate(api, args);
     }
   });
 }
