@@ -1,0 +1,4 @@
+node_modules/
+jobs/
+outputs/
+.DS_Store

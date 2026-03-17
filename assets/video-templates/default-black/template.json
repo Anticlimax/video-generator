@@ -1,0 +1,16 @@
+{
+  "id": "default-black",
+  "label": "Default Black Loop",
+  "kind": "procedural-color",
+  "relative_asset_path": "assets/video-templates/default-black/render.mp4",
+  "loop_strategy": "color-loop",
+  "fallback_mode": "solid-black",
+  "source_type": "procedural",
+  "license": "internal-generated",
+  "params": {
+    "resolution": "1280x720",
+    "color": "black",
+    "motion": "subtle luminance pulse",
+    "duration_sec": 60
+  }
+}

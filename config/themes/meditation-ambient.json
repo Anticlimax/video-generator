@@ -1,0 +1,21 @@
+{
+  "id": "meditation-ambient",
+  "version": "1.0.0",
+  "label": "Meditation Ambient",
+  "description": "Slow-moving drones and bell tones for guided meditation and breathwork.",
+  "aliases": ["meditation", "冥想", "ambient", "breathwork"],
+  "keywords": ["drone", "bells", "slow pulse", "reverie"],
+  "music_style": "bell drones with airy pad bed",
+  "prompt_seed": "resonant bells, long sustain, very low attack, no rhythmic percussion",
+  "default_duration_sec": 3000,
+  "allowed_duration_sec": [1800, 3000, 5400],
+  "video_template_id": "soft-stars",
+  "crossfade_duration_sec": 7,
+  "target_lufs": -24,
+  "mix_profile": {
+    "bells": "crystal",
+    "pads": "ethereal",
+    "reverb": "cathedral"
+  },
+  "tags": ["meditation", "drone", "breath", "ambient"]
+}

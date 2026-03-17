@@ -1,0 +1,16 @@
+{
+  "id": "gradient-drift",
+  "label": "Gradient Drift",
+  "kind": "procedural-gradient",
+  "relative_asset_path": "assets/video-templates/gradient-drift/render.mp4",
+  "loop_strategy": "color-drift",
+  "fallback_mode": "soft-stars",
+  "source_type": "procedural",
+  "license": "internal-generated",
+  "params": {
+    "resolution": "1280x720",
+    "palette": ["#0f0f1f", "#1f3f5f", "#3f5f7f"],
+    "animation": "slow horizontal drift",
+    "duration_sec": 60
+  }
+}

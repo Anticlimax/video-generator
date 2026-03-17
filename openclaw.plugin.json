@@ -1,0 +1,26 @@
+{
+  "id": "ambient-media-tools",
+  "name": "Ambient Media Tools",
+  "description": "OpenClaw helpers for ambient longform media generation.",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "mode": {
+        "type": "string",
+        "enum": ["mock", "infsh"]
+      },
+      "infshAppId": {
+        "type": "string"
+      },
+      "timeoutSec": {
+        "type": "number",
+        "minimum": 1
+      },
+      "maxRetries": {
+        "type": "number",
+        "minimum": 0
+      }
+    }
+  }
+}

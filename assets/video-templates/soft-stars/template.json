@@ -1,0 +1,17 @@
+{
+  "id": "soft-stars",
+  "label": "Soft Stars",
+  "kind": "procedural-stars",
+  "relative_asset_path": "assets/video-templates/soft-stars/render.mp4",
+  "loop_strategy": "slow-pan",
+  "fallback_mode": "default-black",
+  "source_type": "procedural",
+  "license": "internal-generated",
+  "params": {
+    "resolution": "1280x720",
+    "star_density": "moderate",
+    "glow": "soft",
+    "motion": "slow drift",
+    "duration_sec": 60
+  }
+}

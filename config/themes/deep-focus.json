@@ -1,0 +1,21 @@
+{
+  "id": "deep-focus",
+  "version": "1.0.0",
+  "label": "Deep Focus",
+  "description": "Metronomic ambient loops with low variation to support concentration.",
+  "aliases": ["focus", "study", "专注", "工作音乐"],
+  "keywords": ["concentration", "steady pulse", "minimal", "desk work"],
+  "music_style": "soft synth pad with subtle piano motifs",
+  "prompt_seed": "steady low-frequency pad, sparse piano stabs, no percussion",
+  "default_duration_sec": 3600,
+  "allowed_duration_sec": [1800, 3600, 7200],
+  "video_template_id": "gradient-drift",
+  "crossfade_duration_sec": 5,
+  "target_lufs": -21,
+  "mix_profile": {
+    "pad": "warm analog",
+    "filter": "gentle low-pass",
+    "reverb": "plate short"
+  },
+  "tags": ["focus", "ambient", "study"]
+}

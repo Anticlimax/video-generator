@@ -1,0 +1,21 @@
+{
+  "id": "sleep-piano",
+  "version": "1.0.0",
+  "label": "Sleep Piano",
+  "description": "Low-dynamics piano ambient textures tailored for falling asleep.",
+  "aliases": ["sleep", "sleeping music", "助眠", "睡前"],
+  "keywords": ["night", "calm", "soft piano", "slow arpeggio"],
+  "music_style": "simple piano pad with spacey delay",
+  "prompt_seed": "soft repeated piano chords, wide reverb, no drums",
+  "default_duration_sec": 3600,
+  "allowed_duration_sec": [1800, 3600, 7200],
+  "video_template_id": "default-black",
+  "crossfade_duration_sec": 6,
+  "target_lufs": -23,
+  "mix_profile": {
+    "eq": "low-mid lift",
+    "reverb": "hall small",
+    "compression": "light"
+  },
+  "tags": ["sleep", "piano", "meditation"]
+}

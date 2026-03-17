@@ -1,0 +1,21 @@
+{
+  "id": "rainy-night-piano",
+  "version": "1.0.0",
+  "label": "Rainy Night Piano",
+  "description": "Gentle piano with distant rain/soundscape, suited for reflective late-night sessions.",
+  "aliases": ["rain", "night", "雨夜", "雨声"],
+  "keywords": ["rain window", "sleepy rain", "soft keys", "ambient drizzle"],
+  "music_style": "minimal piano with vinyl rain loops",
+  "prompt_seed": "slow piano motif plus soft rain texture, consistent velocity",
+  "default_duration_sec": 5400,
+  "allowed_duration_sec": [1800, 3600, 5400, 7200],
+  "video_template_id": "soft-stars",
+  "crossfade_duration_sec": 6,
+  "target_lufs": -22,
+  "mix_profile": {
+    "noise": "light rain loop",
+    "eq": "dip high mids",
+    "delay": "gentle"
+  },
+  "tags": ["rain", "night", "piano", "ambient"]
+}
