@@ -67,7 +67,29 @@ test("ambient_video_generate completes build and render in one call", async () =
             mp3Bytes.byteOffset + mp3Bytes.byteLength
           );
         }
-      })
+      }),
+      coverGeneratorImpl: async ({ outputPath, prompt }) => {
+        const result = spawnSync(
+          "ffmpeg",
+          [
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=0x101828:s=1280x720:d=1",
+            "-frames:v",
+            "1",
+            outputPath
+          ],
+          { encoding: "utf8" }
+        );
+        assert.equal(result.status, 0, result.stderr);
+        return {
+          imagePath: outputPath,
+          prompt,
+          provider: "mock-cover"
+        };
+      }
     }
   });
 
@@ -93,4 +115,56 @@ test("ambient_video_generate completes build and render in one call", async () =
   assert.deepEqual(streamKinds, ["audio", "video"]);
   assert.ok(Number(probe.format.duration) >= 7.5);
   assert.ok(Number(probe.format.size) > 0);
+});
+
+test("ambient_video_generate can resolve free-text theme and style and render via a generated cover", async () => {
+  const tools = [];
+  registerAmbientTools({
+    registerTool(tool) {
+      tools.push(tool);
+    },
+    config: {
+      coverGeneratorImpl: async ({ outputPath, prompt }) => {
+        const result = spawnSync(
+          "ffmpeg",
+          [
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=0x162033:s=1280x720:d=1",
+            "-frames:v",
+            "1",
+            outputPath
+          ],
+          { encoding: "utf8" }
+        );
+        assert.equal(result.status, 0, result.stderr);
+        return {
+          imagePath: outputPath,
+          prompt,
+          provider: "mock-cover"
+        };
+      }
+    }
+  });
+
+  const tool = tools.find((item) => item.name === "ambient_video_generate");
+  const result = await tool.execute("call_2", {
+    theme: "sleep",
+    style: "ocean piano",
+    duration_target_sec: 8,
+    master_duration_sec: 2,
+    allow_nonstandard_duration: true,
+    output_name: "ambient-video-generate-free-text",
+    mode: "mock"
+  });
+
+  assert.equal(result.data.ok, true);
+  assert.equal(result.data.theme_id, "sleep-piano");
+  assert.match(result.data.final_output_path, /ambient-video-generate-free-text\.mp4$/);
+  const probe = probeJson(result.data.final_output_path);
+  const streamKinds = probe.streams.map((stream) => stream.codec_type).sort();
+  assert.deepEqual(streamKinds, ["audio", "video"]);
+  assert.ok(Number(probe.format.duration) >= 7.5);
 });

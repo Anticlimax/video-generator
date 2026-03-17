@@ -13,6 +13,9 @@
       "elevenLabsApiKey": {
         "type": "string"
       },
+      "geminiApiKey": {
+        "type": "string"
+      },
       "infshAppId": {
         "type": "string"
       },

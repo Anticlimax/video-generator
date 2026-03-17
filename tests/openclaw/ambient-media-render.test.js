@@ -26,6 +26,25 @@ function createSampleAudio(filePath) {
   assert.equal(result.status, 0, result.stderr);
 }
 
+function createSampleImage(filePath) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  const result = spawnSync(
+    "ffmpeg",
+    [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "color=c=0x101828:s=1280x720:d=1",
+      "-frames:v",
+      "1",
+      filePath
+    ],
+    { encoding: "utf8" }
+  );
+  assert.equal(result.status, 0, result.stderr);
+}
+
 function probeJson(filePath) {
   const result = spawnSync(
     "ffprobe",
@@ -77,4 +96,33 @@ test("ambient_media_render produces a playable mp4 with audio and video streams"
   assert.deepEqual(streamKinds, ["audio", "video"]);
   assert.ok(Number(probe.format.duration) >= 3.5);
   assert.ok(Number(probe.format.size) > 0);
+});
+
+test("ambient_media_render can render a playable mp4 from a static cover image", async () => {
+  const tools = [];
+  registerAmbientTools({
+    registerTool(tool) {
+      tools.push(tool);
+    },
+    config: {}
+  });
+
+  const masterAudioPath = path.join("jobs", "job_seed_static", "master_audio.wav");
+  const imagePath = path.join("jobs", "job_seed_static", "cover.png");
+  createSampleAudio(masterAudioPath);
+  createSampleImage(imagePath);
+
+  const tool = tools.find((item) => item.name === "ambient_media_render");
+  const result = await tool.execute("call_2", {
+    master_audio_path: masterAudioPath,
+    image_path: imagePath,
+    duration_target_sec: 4,
+    output_name: "sleep-piano-static"
+  });
+
+  assert.equal(result.data.ok, true);
+  const probe = probeJson(result.data.final_output_path);
+  const streamKinds = probe.streams.map((stream) => stream.codec_type).sort();
+  assert.deepEqual(streamKinds, ["audio", "video"]);
+  assert.ok(Number(probe.format.duration) >= 3.5);
 });

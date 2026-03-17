@@ -13,7 +13,7 @@ test("registerAmbientTools registers ambient_music_build and ambient_media_rende
 
   assert.deepEqual(
     tools.map((tool) => tool.name),
-    ["ambient_music_build", "ambient_media_render", "ambient_video_generate"]
+    ["ambient_music_build", "ambient_media_render", "ambient_video_generate", "ambient_cover_generate"]
   );
   for (const tool of tools) {
     assert.equal(typeof tool.parameters, "object");
