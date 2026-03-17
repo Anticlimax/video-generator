@@ -62,7 +62,7 @@ test("ambient_media_render produces a playable mp4 with audio and video streams"
   const result = await tool.execute("call_1", {
     master_audio_path: masterAudioPath,
     duration_target_sec: 4,
-    video_template_id: "default-black",
+    video_template_id: "soft-stars",
     output_name: "sleep-piano-4m",
     mix_profile: {}
   });

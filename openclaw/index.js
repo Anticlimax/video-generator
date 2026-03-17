@@ -6,6 +6,7 @@ import { createJobWorkspace, writeManifest } from "../src/lib/jobs.js";
 import { buildMusicPrompt } from "../src/lib/music-prompt.js";
 import { resolveMusicProvider } from "../src/lib/music-provider.js";
 import { buildRenderPlan } from "../src/lib/render-plan.js";
+import { buildVideoLoopArgs } from "../src/lib/ffmpeg-commands.js";
 
 async function ensureParentDir(filePath) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -234,17 +235,11 @@ async function runAmbientMediaRender(_api, args) {
 
   await runCommand("ffmpeg", [
     "-y",
-    "-f",
-    "lavfi",
-    "-i",
-    "color=c=black:s=1280x720:r=24",
-    "-t",
-    String(durationSec),
-    "-pix_fmt",
-    "yuv420p",
-    "-c:v",
-    "libx264",
-    job.loopVideoPath
+    ...buildVideoLoopArgs({
+      videoTemplateId: plan.video.templateId,
+      durationTargetSec: durationSec,
+      outputPath: job.loopVideoPath
+    })
   ]);
 
   await runCommand("ffmpeg", [

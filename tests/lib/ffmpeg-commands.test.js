@@ -14,6 +14,18 @@ test("buildVideoLoopArgs uses a procedural fallback for default-black", () => {
   assert.ok(args.includes("color=c=black"));
 });
 
+test("buildVideoLoopArgs builds a drifting star field for soft-stars", () => {
+  const args = buildVideoLoopArgs({
+    videoTemplateId: "soft-stars",
+    durationTargetSec: 120,
+    outputPath: "jobs/job_001/loop_video.mp4"
+  });
+  const command = args.join(" ");
+  assert.match(command, /drawbox=/);
+  assert.match(command, /color=c=black/);
+  assert.match(command, /libx264/);
+});
+
 test("buildAudioExtendArgs includes crossfade and loudnorm filters", () => {
   const args = buildAudioExtendArgs({
     inputPath: "jobs/job_001/master.wav",

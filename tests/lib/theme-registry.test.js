@@ -12,7 +12,7 @@ test("resolveTheme maps sleep piano requests to sleep-piano", async () => {
     style: "simple piano"
   });
   assert.equal(theme.id, "sleep-piano");
-  assert.equal(theme.video_template_id, "default-black");
+  assert.equal(theme.video_template_id, "soft-stars");
 });
 
 test("resolveTheme falls back to keyword scoring before failing", async () => {

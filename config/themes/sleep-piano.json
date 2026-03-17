@@ -9,7 +9,7 @@
   "prompt_seed": "soft repeated piano chords, wide reverb, no drums",
   "default_duration_sec": 3600,
   "allowed_duration_sec": [1800, 3600, 7200],
-  "video_template_id": "default-black",
+  "video_template_id": "soft-stars",
   "crossfade_duration_sec": 6,
   "target_lufs": -23,
   "mix_profile": {
