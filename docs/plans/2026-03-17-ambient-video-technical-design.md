@@ -70,7 +70,7 @@
 
 - OpenClaw skill 作为工作流入口
 - 本地 `ffmpeg` 负责扩展、拼接和导出
-- `agent-tools` skill 负责连接外部 AI 生成能力
+- provider 适配层负责连接外部音频生成能力
 - 可选 ClawHub skill：
   - `video-frames`
   - `ffmpeg-video-editor`
@@ -334,7 +334,10 @@ plugin 层只接受标准化后的 `theme_id`，不负责处理自由文本。
 第一阶段 provider 默认策略：
 
 - `mock` 为稳定保底路径
-- `infsh` 为唯一外部生成路径
+- 第一真实外部 provider 优先考虑 `ElevenLabs Music API`
+- `Mubert API` 为第二候选
+- `Gemini Lyria RealTime` 作为实验性路线
+- `infsh` 仅保留为可选扩展接口，不作为默认依赖
 - `timeout_sec` 默认 `180`
 - `max_retries` 默认 `1`
 
@@ -577,6 +580,7 @@ MVP 阶段至少要有文件级可观测性。
 - 预览模式
 - 自动任务队列
 - 完整存储清理系统
+- 将未验证的外部 provider 当作默认依赖
 
 只要本地目录、配置文件、OpenClaw skill、薄 plugin 和 `ffmpeg` 能闭环，就符合 MVP 目标。
 

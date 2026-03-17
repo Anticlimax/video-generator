@@ -100,7 +100,13 @@
 - OpenClaw skill 工作流能力
 - ClawHub 已有媒体相关 skill
 - 本机 `ffmpeg`
-- `agent-tools` 连接外部 AI 生成能力
+- 外部音频 provider 作为可插拔扩展，而不是 MVP 默认依赖
+
+当前默认方向是：
+
+- 本地保底母带生成
+- 本地扩展和合成
+- 外部音频服务在选型明确后再接入
 
 ## 5. MVP 范围
 

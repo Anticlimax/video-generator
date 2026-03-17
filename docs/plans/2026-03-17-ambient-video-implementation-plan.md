@@ -4,7 +4,7 @@
 
 **Goal:** Build the MVP for a theme-driven longform ambient video generator that produces short ambient music masters, extends them into long audio, pairs them with low-stimulation looping visuals, and exports a final playable MP4 through an OpenClaw skill + thin plugin architecture.
 
-**Architecture:** Use a local OpenClaw plugin as the stable execution layer and a local skill as the orchestration layer. Keep business logic configuration-driven with JSON theme files, keep media processing local via `ffmpeg`, normalize provider output into a single WAV spec, and keep the first release constrained to procedural video templates plus serial execution.
+**Architecture:** Use a local OpenClaw plugin as the stable execution layer and a local skill as the orchestration layer. Keep business logic configuration-driven with JSON theme files, keep media processing local via `ffmpeg`, normalize provider output into a single WAV spec, and keep the first release constrained to procedural video templates plus serial execution. Do not assume `infsh` is the default external music provider; keep provider selection explicit.
 
 **Tech Stack:** Node.js 22 ESM, OpenClaw plugin conventions, local skill docs, JSON config, `node:test`, `ffmpeg`, shell smoke scripts.
 
@@ -373,7 +373,7 @@ Then extend `music-provider.js` with a stable interface:
 - `timeoutSec`
 - `maxRetries`
 
-Implement `mock` first. The `infsh` branch can initially stop at request preparation and return a clear `not_implemented` error until Task 6 wires it into the plugin.
+Implement `mock` first. Keep external providers behind the same interface. Prefer `ElevenLabs Music API` as the first real provider candidate once provider selection is finalized; treat `infsh` as optional and non-default unless a verified app id is available.
 
 Normalize every provider result to:
 
@@ -759,7 +759,7 @@ git commit -m "feat: ship ambient longform video generator mvp"
 
 ## Notes For Execution
 
-- Keep the first vertical slice shippable with `mock` music generation plus real local render, then wire `infsh` after the unit boundaries are stable.
+- Keep the first vertical slice shippable with `mock` music generation plus real local render, then wire a verified external provider after the unit boundaries are stable. Current preferred direction is `ElevenLabs Music API`, not `infsh` by default.
 - Do not add a database, API server, or queue in this phase.
 - Do not block MVP on real visual assets beyond procedural templates such as `default-black`, `soft-stars`, and `gradient-drift`.
 - Do not add preview mode in this phase.
