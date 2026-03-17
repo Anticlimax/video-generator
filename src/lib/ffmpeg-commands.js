@@ -39,37 +39,79 @@ export function buildVideoLoopArgs({
 
   if (videoTemplateId === "soft-stars") {
     const stars = [
-      { size: 4, color: "0x9bbcff", alpha: 220, x: "90+26*sin(t/43)+8*cos(t/19)", y: "62+14*cos(t/47)+5*sin(t/23)" },
-      { size: 4, color: "0xb8fff6", alpha: 205, x: "1180+18*cos(t/39)+6*sin(t/17)", y: "540+12*sin(t/41)+4*cos(t/21)" },
-      { size: 8, color: "0xfff3d6", alpha: 188, x: "220+32*sin(t/51)+10*cos(t/27)", y: "166+18*cos(t/45)+6*sin(t/29)" },
-      { size: 8, color: "0xd7e4ff", alpha: 176, x: "960+22*cos(t/49)+7*sin(t/25)", y: "104+15*sin(t/43)+5*cos(t/31)" },
-      { size: 16, color: "0x9bbcff", alpha: 120, x: "420+18*sin(t/57)+6*cos(t/33)", y: "420+11*cos(t/53)+4*sin(t/21)", haloSize: 42, haloAlpha: 42 },
-      { size: 16, color: "0xb8fff6", alpha: 110, x: "760+16*cos(t/55)+6*sin(t/26)", y: "240+10*sin(t/48)+4*cos(t/24)", haloSize: 40, haloAlpha: 36 },
-      { size: 32, color: "0xfff3d6", alpha: 84, x: "140+10*sin(t/61)+4*cos(t/19)", y: "500+7*cos(t/52)+3*sin(t/18)", haloSize: 72, haloAlpha: 28 },
-      { size: 32, color: "0xd7e4ff", alpha: 78, x: "1030+9*cos(t/63)+4*sin(t/22)", y: "120+6*sin(t/46)+3*cos(t/17)", haloSize: 68, haloAlpha: 24 }
-    ];
-
-    const layers = [];
-    for (const star of stars) {
-      if (star.haloSize) {
-        layers.push({
-          size: star.haloSize,
-          color: star.color,
-          alpha: star.haloAlpha,
-          x: star.x,
-          y: star.y,
-          blurSigma: 1.8
-        });
+      {
+        size: 4,
+        color: "0x9bbcff",
+        alpha: 220,
+        centerX: "mod(-80+62*t,main_w+overlay_w)-overlay_w/2",
+        centerY: "62+14*cos(t/47)+5*sin(t/23)",
+        patchSize: 12,
+        haloAlpha: 34
+      },
+      {
+        size: 4,
+        color: "0xb8fff6",
+        alpha: 205,
+        centerX: "mod(220+58*t,main_w+overlay_w)-overlay_w/2",
+        centerY: "540+12*sin(t/41)+4*cos(t/21)",
+        patchSize: 12,
+        haloAlpha: 30
+      },
+      {
+        size: 8,
+        color: "0xfff3d6",
+        alpha: 188,
+        centerX: "mod(-260+55*t,main_w+overlay_w)-overlay_w/2",
+        centerY: "166+18*cos(t/45)+6*sin(t/29)",
+        patchSize: 22,
+        haloAlpha: 38
+      },
+      {
+        size: 8,
+        color: "0xd7e4ff",
+        alpha: 176,
+        centerX: "mod(540+61*t,main_w+overlay_w)-overlay_w/2",
+        centerY: "104+15*sin(t/43)+5*cos(t/31)",
+        patchSize: 22,
+        haloAlpha: 34
+      },
+      {
+        size: 16,
+        color: "0x9bbcff",
+        alpha: 120,
+        centerX: "mod(-420+49*t,main_w+overlay_w)-overlay_w/2",
+        centerY: "420+11*cos(t/53)+4*sin(t/21)",
+        patchSize: 42,
+        haloAlpha: 42
+      },
+      {
+        size: 16,
+        color: "0xb8fff6",
+        alpha: 110,
+        centerX: "mod(840+47*t,main_w+overlay_w)-overlay_w/2",
+        centerY: "240+10*sin(t/48)+4*cos(t/24)",
+        patchSize: 40,
+        haloAlpha: 36
+      },
+      {
+        size: 32,
+        color: "0xfff3d6",
+        alpha: 84,
+        centerX: "mod(-700+44*t,main_w+overlay_w)-overlay_w/2",
+        centerY: "500+7*cos(t/52)+3*sin(t/18)",
+        patchSize: 72,
+        haloAlpha: 28
+      },
+      {
+        size: 32,
+        color: "0xd7e4ff",
+        alpha: 78,
+        centerX: "mod(1080+46*t,main_w+overlay_w)-overlay_w/2",
+        centerY: "120+6*sin(t/46)+3*cos(t/17)",
+        patchSize: 68,
+        haloAlpha: 24
       }
-      layers.push({
-        size: star.size,
-        color: star.color,
-        alpha: star.alpha,
-        x: star.x,
-        y: star.y,
-        blurSigma: 0
-      });
-    }
+    ];
 
     const inputs = [
       "-f",
@@ -78,30 +120,30 @@ export function buildVideoLoopArgs({
       "color=c=0x030611:s=1280x720:r=24"
     ];
 
-    const layerInput = ({ size, color, alpha, blurSigma }) => {
-      const radius = size / 2 - 0.5;
+    const layerInput = ({ size, patchSize, color, alpha, haloAlpha }) => {
+      const coreRadius = size / 2 - 0.5;
+      const haloRadius = patchSize / 2 - 0.5;
+      const coreRadiusSq = coreRadius * coreRadius;
+      const haloRadiusSq = haloRadius * haloRadius;
       const parts = [
-        `color=c=${color}:s=${size}x${size}:r=24`,
+        `color=c=${color}:s=${patchSize}x${patchSize}:r=24`,
         "format=rgba",
-        `geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(lte((X-W/2)*(X-W/2)+(Y-H/2)*(Y-H/2),${radius * radius}),${alpha},0)'`
+        `geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(lte((X-W/2)*(X-W/2)+(Y-H/2)*(Y-H/2),${coreRadiusSq}),${alpha},if(lte((X-W/2)*(X-W/2)+(Y-H/2)*(Y-H/2),${haloRadiusSq}),${haloAlpha}*pow((sqrt(${haloRadiusSq})-sqrt((X-W/2)*(X-W/2)+(Y-H/2)*(Y-H/2)))/(sqrt(${haloRadiusSq})-sqrt(${coreRadiusSq})),2),0))'`
       ];
-      if (blurSigma > 0) {
-        parts.push(`gblur=sigma=${blurSigma}:steps=1`);
-      }
       return parts.join(",");
     };
 
-    for (const layer of layers) {
-      inputs.push("-f", "lavfi", "-i", layerInput(layer));
+    for (const star of stars) {
+      inputs.push("-f", "lavfi", "-i", layerInput(star));
     }
 
     const filterParts = [];
     let previousLabel = "[0:v]";
-    layers.forEach((layer, index) => {
+    stars.forEach((star, index) => {
       const inputLabel = `[${index + 1}:v]`;
-      const outputLabel = index === layers.length - 1 ? "[vstars]" : `[v${index + 1}]`;
+      const outputLabel = index === stars.length - 1 ? "[vstars]" : `[v${index + 1}]`;
       filterParts.push(
-        `${previousLabel}${inputLabel}overlay=x='${layer.x}':y='${layer.y}'${outputLabel}`
+        `${previousLabel}${inputLabel}overlay=x='${star.centerX}':y='${star.centerY}-overlay_h/2':eval=frame${outputLabel}`
       );
       previousLabel = outputLabel;
     });
