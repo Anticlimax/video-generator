@@ -75,6 +75,8 @@ test("ambient_video_generate completes build and render in one call", async () =
   const result = await tool.execute("call_1", {
     theme_id: "sleep-piano",
     duration_target_sec: 8,
+    master_duration_sec: 2,
+    allow_nonstandard_duration: true,
     output_name: "ambient-video-generate-smoke",
     mode: "elevenlabs"
   });

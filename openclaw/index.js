@@ -3,6 +3,10 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { loadThemeRegistry } from "../src/lib/theme-registry.js";
 import { createJobWorkspace, writeManifest } from "../src/lib/jobs.js";
+import {
+  selectMasterDurationSec,
+  validateTargetDurationSec
+} from "../src/lib/duration-policy.js";
 import { buildMusicPrompt } from "../src/lib/music-prompt.js";
 import { resolveMusicProvider } from "../src/lib/music-provider.js";
 import { buildRenderPlan } from "../src/lib/render-plan.js";
@@ -98,6 +102,14 @@ function toolResult(data) {
   };
 }
 
+function resolveTargetDurationSec(theme, args) {
+  const requestedDurationSec = Number(args?.duration_target_sec || theme.default_duration_sec || 0);
+  if (args?.allow_nonstandard_duration) {
+    return requestedDurationSec;
+  }
+  return validateTargetDurationSec(theme, requestedDurationSec);
+}
+
 async function runAmbientMusicBuild(api, args) {
   const registry = await loadThemeRegistry();
   const theme = registry.get(String(args?.theme_id || "").trim());
@@ -119,7 +131,11 @@ async function runAmbientMusicBuild(api, args) {
   const normalized = await provider.normalizeResult({
     path: job.masterAudioPath
   });
-  const durationSec = Number(args?.duration_target_sec || theme.default_duration_sec || 0);
+  const targetDurationSec = resolveTargetDurationSec(theme, args);
+  const masterDurationSec =
+    args?.master_duration_sec != null
+      ? Number(args.master_duration_sec)
+      : selectMasterDurationSec(theme, targetDurationSec);
 
   if (provider.name === "mock") {
     await ensureParentDir(job.masterAudioPath);
@@ -128,7 +144,7 @@ async function runAmbientMusicBuild(api, args) {
       "-f",
       "lavfi",
       "-i",
-      `sine=frequency=220:duration=${durationSec}`,
+      `sine=frequency=220:duration=${masterDurationSec}`,
       "-af",
       "volume=0.05",
       "-ar",
@@ -140,7 +156,7 @@ async function runAmbientMusicBuild(api, args) {
   } else if (provider.name === "elevenlabs") {
     const request = provider.prepareRequest({
       prompt,
-      durationSec
+      durationSec: masterDurationSec
     });
     const fetchImpl = api?.config?.fetchImpl || globalThis.fetch;
     if (!fetchImpl) {
@@ -184,7 +200,9 @@ async function runAmbientMusicBuild(api, args) {
     themeId: theme.id,
     themeVersion: theme.version,
     prompt,
-    provider: provider.name
+    provider: provider.name,
+    targetDurationSec,
+    masterDurationSec
   });
 
   return toolResult({
@@ -193,7 +211,8 @@ async function runAmbientMusicBuild(api, args) {
     theme_id: theme.id,
     theme_version: theme.version,
     master_audio_path: job.masterAudioPath,
-    master_duration_sec: durationSec,
+    target_duration_sec: targetDurationSec,
+    master_duration_sec: masterDurationSec,
     loop_strategy: "crossfade_loop",
     audio_spec: normalized.audioSpec,
     qc_notes: ["low-dynamics", "loop-safe-prompt"]
@@ -296,10 +315,12 @@ async function runAmbientVideoGenerate(api, args) {
     throw new Error("theme_not_found");
   }
 
-  const durationSec = Number(args?.duration_target_sec || theme.default_duration_sec || 0);
+  const durationSec = resolveTargetDurationSec(theme, args);
   const musicResult = await runAmbientMusicBuild(api, {
     theme_id: theme.id,
     duration_target_sec: durationSec,
+    master_duration_sec: args?.master_duration_sec,
+    allow_nonstandard_duration: args?.allow_nonstandard_duration,
     seed: args?.seed,
     mode: args?.mode
   });
@@ -321,6 +342,7 @@ async function runAmbientVideoGenerate(api, args) {
     master_job_id: musicResult.data.job_id,
     render_job_id: renderResult.data.job_id,
     master_audio_path: musicResult.data.master_audio_path,
+    master_duration_sec: musicResult.data.master_duration_sec,
     final_output_path: renderResult.data.final_output_path,
     duration_sec: durationSec,
     ffprobe_summary: renderResult.data.ffprobe_summary,

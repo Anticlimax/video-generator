@@ -61,7 +61,7 @@ test("ambient_music_build accepts a standardized theme_id, writes a job manifest
   const tool = tools.find((item) => item.name === "ambient_music_build");
   const result = await tool.execute("call_1", {
     theme_id: "sleep-piano",
-    duration_target_sec: 240,
+    duration_target_sec: 3600,
     seed: "seed-1",
     mode: "mock"
   });
@@ -69,6 +69,8 @@ test("ambient_music_build accepts a standardized theme_id, writes a job manifest
   assert.equal(result.data.ok, true);
   assert.equal(result.data.theme_id, "sleep-piano");
   assert.equal(result.data.theme_version, "1.0.0");
+  assert.equal(result.data.target_duration_sec, 3600);
+  assert.equal(result.data.master_duration_sec, 180);
   assert.match(result.data.master_audio_path, /master_audio\.wav$/);
   assert.equal(
     fs.existsSync(`jobs/${result.data.job_id}/manifest.json`),
@@ -80,7 +82,7 @@ test("ambient_music_build accepts a standardized theme_id, writes a job manifest
   assert.equal(probe.streams[0].codec_type, "audio");
   assert.equal(Number(probe.streams[0].sample_rate), 48000);
   assert.equal(probe.streams[0].channels, 2);
-  assert.ok(Number(probe.format.duration) >= 239);
+  assert.ok(Number(probe.format.duration) >= 179);
 });
 
 test("ambient_music_build can construct an infsh provider from plugin config", async () => {
@@ -97,7 +99,8 @@ test("ambient_music_build can construct an infsh provider from plugin config", a
   const tool = tools.find((item) => item.name === "ambient_music_build");
   const result = await tool.execute("call_2", {
     theme_id: "sleep-piano",
-    duration_target_sec: 30,
+    duration_target_sec: 3600,
+    master_duration_sec: 30,
     seed: "seed-2",
     mode: "infsh"
   });
@@ -132,7 +135,8 @@ test("ambient_music_build can construct an elevenlabs provider from plugin confi
   const tool = tools.find((item) => item.name === "ambient_music_build");
   const result = await tool.execute("call_3", {
     theme_id: "sleep-piano",
-    duration_target_sec: 30,
+    duration_target_sec: 3600,
+    master_duration_sec: 30,
     seed: "seed-3",
     mode: "elevenlabs"
   });
@@ -176,7 +180,8 @@ test("ambient_music_build writes a probeable wav when elevenlabs returns mp3 aud
   const tool = tools.find((item) => item.name === "ambient_music_build");
   const result = await tool.execute("call_4", {
     theme_id: "sleep-piano",
-    duration_target_sec: durationSec,
+    duration_target_sec: 1800,
+    master_duration_sec: durationSec,
     seed: "seed-4",
     mode: "elevenlabs"
   });
