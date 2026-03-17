@@ -56,7 +56,7 @@ test("elevenlabs provider requires an api key and builds a compose request", () 
 
   assert.equal(provider.name, "elevenlabs");
   assert.equal(request.method, "POST");
-  assert.equal(request.url, "https://api.elevenlabs.io/v1/music?output_format=pcm_44100");
+  assert.equal(request.url, "https://api.elevenlabs.io/v1/music?output_format=mp3_44100_128");
   assert.equal(request.headers["xi-api-key"], "test-key");
   assert.equal(request.headers["content-type"], "application/json");
   assert.equal(request.body.music_length_ms, 120000);

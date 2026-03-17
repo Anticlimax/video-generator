@@ -24,6 +24,31 @@ function probeJson(filePath) {
   return JSON.parse(result.stdout);
 }
 
+function createMp3Buffer(durationSec = 1) {
+  const result = spawnSync(
+    "ffmpeg",
+    [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      `sine=frequency=220:duration=${durationSec}`,
+      "-ar",
+      "44100",
+      "-ac",
+      "2",
+      "-b:a",
+      "128k",
+      "-f",
+      "mp3",
+      "pipe:1"
+    ],
+    { encoding: null }
+  );
+  assert.equal(result.status, 0, result.stderr?.toString?.() || "");
+  return result.stdout;
+}
+
 test("ambient_music_build accepts a standardized theme_id, writes a job manifest, and records theme_version", async () => {
   const tools = [];
   registerAmbientTools({
@@ -84,7 +109,7 @@ test("ambient_music_build can construct an infsh provider from plugin config", a
 
 test("ambient_music_build can construct an elevenlabs provider from plugin config", async () => {
   const tools = [];
-  const pcmBytes = Buffer.alloc(44100 * 2 * 2, 0);
+  const mp3Bytes = createMp3Buffer(1);
   registerAmbientTools({
     registerTool(tool) {
       tools.push(tool);
@@ -95,9 +120,9 @@ test("ambient_music_build can construct an elevenlabs provider from plugin confi
         ok: true,
         status: 200,
         async arrayBuffer() {
-          return pcmBytes.buffer.slice(
-            pcmBytes.byteOffset,
-            pcmBytes.byteOffset + pcmBytes.byteLength
+          return mp3Bytes.buffer.slice(
+            mp3Bytes.byteOffset,
+            mp3Bytes.byteOffset + mp3Bytes.byteLength
           );
         }
       })
@@ -117,13 +142,11 @@ test("ambient_music_build can construct an elevenlabs provider from plugin confi
   assert.match(result.data.master_audio_path, /master_audio\.wav$/);
 });
 
-test("ambient_music_build writes a probeable wav when elevenlabs returns pcm audio", async () => {
+test("ambient_music_build writes a probeable wav when elevenlabs returns mp3 audio", async () => {
   const tools = [];
   let fetchCalls = 0;
-  const sampleRate = 44100;
-  const channels = 2;
   const durationSec = 2;
-  const pcmBytes = Buffer.alloc(sampleRate * channels * durationSec * 2, 0);
+  const mp3Bytes = createMp3Buffer(durationSec);
 
   registerAmbientTools({
     registerTool(tool) {
@@ -133,16 +156,16 @@ test("ambient_music_build writes a probeable wav when elevenlabs returns pcm aud
       elevenLabsApiKey: "test-key",
       fetchImpl: async (url, options) => {
         fetchCalls += 1;
-        assert.equal(url, "https://api.elevenlabs.io/v1/music?output_format=pcm_44100");
+        assert.equal(url, "https://api.elevenlabs.io/v1/music?output_format=mp3_44100_128");
         assert.equal(options.method, "POST");
         assert.equal(options.headers["xi-api-key"], "test-key");
         return {
           ok: true,
           status: 200,
           async arrayBuffer() {
-            return pcmBytes.buffer.slice(
-              pcmBytes.byteOffset,
-              pcmBytes.byteOffset + pcmBytes.byteLength
+            return mp3Bytes.buffer.slice(
+              mp3Bytes.byteOffset,
+              mp3Bytes.byteOffset + mp3Bytes.byteLength
             );
           }
         };

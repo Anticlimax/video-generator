@@ -156,20 +156,14 @@ async function runAmbientMusicBuild(api, args) {
       throw new Error(`elevenlabs_request_failed_${response.status}`);
     }
 
-    const pcmPath = path.join(job.jobDir, "master_audio.pcm");
-    const pcmBuffer = Buffer.from(await response.arrayBuffer());
-    await writeBinaryFile(pcmPath, pcmBuffer);
+    const downloadPath = path.join(job.jobDir, "master_audio.mp3");
+    const downloadBuffer = Buffer.from(await response.arrayBuffer());
+    await writeBinaryFile(downloadPath, downloadBuffer);
 
     await runCommand("ffmpeg", [
       "-y",
-      "-f",
-      "s16le",
-      "-ar",
-      "44100",
-      "-ac",
-      "2",
       "-i",
-      pcmPath,
+      downloadPath,
       "-ar",
       "48000",
       "-ac",

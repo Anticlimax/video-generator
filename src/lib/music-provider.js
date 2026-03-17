@@ -61,7 +61,7 @@ function createElevenLabsProviderWithKey({ elevenLabsApiKey }) {
     prepareRequest({ prompt, durationSec }) {
       return {
         method: "POST",
-        url: "https://api.elevenlabs.io/v1/music?output_format=pcm_44100",
+        url: "https://api.elevenlabs.io/v1/music?output_format=mp3_44100_128",
         headers: {
           "xi-api-key": elevenLabsApiKey,
           "content-type": "application/json"
