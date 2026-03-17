@@ -3,7 +3,7 @@
 1. User says “生成一个 2 小时 海洋主题的舒缓钢琴视频”.
 2. Skill extracts `theme = ocean`, `style = soothing piano`, `duration_target_sec = 7200`.
 3. `ambient_video_generate` resolves the free text to an internal theme family, builds a short master, generates a static cover image, and renders the final MP4.
-4. Skill replies with `final_output_path`, resolved `theme_id`, `theme_version`, and render summary.
+4. Skill replies with `final_output_path`, resolved internal theme family, `theme_version`, and render summary.
 
 ## Fallback
 

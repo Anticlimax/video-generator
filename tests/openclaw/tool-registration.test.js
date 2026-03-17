@@ -21,4 +21,10 @@ test("registerAmbientTools registers ambient_music_build and ambient_media_rende
     assert.equal(typeof tool.schema, "object");
     assert.equal(tool.schema.type, "object");
   }
+
+  const videoTool = tools.find((tool) => tool.name === "ambient_video_generate");
+  assert.ok(videoTool);
+  assert.equal(Array.isArray(videoTool.parameters.required), false);
+  assert.equal(videoTool.parameters.properties.theme?.type, "string");
+  assert.equal(videoTool.parameters.properties.style?.type, "string");
 });

@@ -16,8 +16,8 @@ The skill maps aliases and keywords defined in each theme config (`sleep-piano`,
 
 1. Parse `theme`, `style`, and `duration` from user text.
 2. Call `ambient_video_generate` as the default path with `[theme, style, duration_target_sec, mode, output_name]`.
-3. Let the plugin resolve the free text to an internal `theme_id`, generate music, generate a static cover image, and render the final MP4.
-4. Return the final output path, resolved `theme_id`, theme/version, master duration, and render summary from the one-shot tool.
+3. Let the plugin resolve the free text to an internal canonical theme family, generate music, generate a static cover image, and render the final MP4.
+4. Return the final output path, resolved internal theme family, theme/version, master duration, and render summary from the one-shot tool.
 5. If the one-shot path fails, use the fallback / 回退 path with `ambient_cover_generate` or `ambient_music_build + ambient_media_render` so the operator can isolate whether the problem is in image generation, music generation, or media rendering.
 
 ## Duration Notes

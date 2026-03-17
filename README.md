@@ -28,10 +28,12 @@ The lower-level tools are still available for debugging:
 - `ambient_cover_generate`
 - `ambient_media_render`
 
-`theme_id` is still supported for controlled/internal calls, but normal user-facing requests should prefer free text:
+User-facing requests should use free text only:
 
 - `theme`: broad subject, scene, or mood
 - `style`: musical or visual flavor layered onto the theme
+
+`theme_id` is now an internal canonical field used for routing, duration policy, and fallback behavior. It remains available only for controlled/debug calls.
 
 ## Duration Model
 
