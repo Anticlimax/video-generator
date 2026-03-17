@@ -102,6 +102,48 @@ function toolResult(data) {
   };
 }
 
+const ambientMusicBuildInputSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    theme_id: { type: "string" },
+    duration_target_sec: { type: "number" },
+    master_duration_sec: { type: "number" },
+    allow_nonstandard_duration: { type: "boolean" },
+    seed: { type: "string" },
+    mode: { type: "string", enum: ["mock", "elevenlabs", "infsh"] }
+  },
+  required: ["theme_id"]
+};
+
+const ambientMediaRenderInputSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    master_audio_path: { type: "string" },
+    duration_target_sec: { type: "number" },
+    video_template_id: { type: "string" },
+    output_name: { type: "string" }
+  },
+  required: ["master_audio_path", "duration_target_sec"]
+};
+
+const ambientVideoGenerateInputSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    theme_id: { type: "string" },
+    duration_target_sec: { type: "number" },
+    master_duration_sec: { type: "number" },
+    allow_nonstandard_duration: { type: "boolean" },
+    seed: { type: "string" },
+    mode: { type: "string", enum: ["mock", "elevenlabs", "infsh"] },
+    video_template_id: { type: "string" },
+    output_name: { type: "string" }
+  },
+  required: ["theme_id"]
+};
+
 function resolveTargetDurationSec(theme, args) {
   const requestedDurationSec = Number(args?.duration_target_sec || theme.default_duration_sec || 0);
   if (args?.allow_nonstandard_duration) {
@@ -354,6 +396,8 @@ export function registerAmbientTools(api) {
   api.registerTool({
     name: "ambient_music_build",
     description: "Generate or plan a short ambient music master",
+    parameters: ambientMusicBuildInputSchema,
+    schema: ambientMusicBuildInputSchema,
     async execute(_callId, args) {
       return runAmbientMusicBuild(api, args);
     }
@@ -362,6 +406,8 @@ export function registerAmbientTools(api) {
   api.registerTool({
     name: "ambient_media_render",
     description: "Extend audio, loop video, and export a final MP4",
+    parameters: ambientMediaRenderInputSchema,
+    schema: ambientMediaRenderInputSchema,
     async execute(_callId, args) {
       return runAmbientMediaRender(api, args);
     }
@@ -370,6 +416,8 @@ export function registerAmbientTools(api) {
   api.registerTool({
     name: "ambient_video_generate",
     description: "Build ambient music and render the final ambient video in one call",
+    parameters: ambientVideoGenerateInputSchema,
+    schema: ambientVideoGenerateInputSchema,
     async execute(_callId, args) {
       return runAmbientVideoGenerate(api, args);
     }
