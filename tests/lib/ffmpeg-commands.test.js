@@ -27,12 +27,17 @@ test("buildVideoLoopArgs builds a drifting star field for soft-stars", () => {
   assert.match(command, /s=8x8/);
   assert.match(command, /s=16x16/);
   assert.match(command, /s=32x32/);
+  assert.match(command, /format=rgba/);
+  assert.match(command, /geq=r='/);
+  assert.match(command, /a='if\(lte/);
   assert.match(command, /sin\(t\//);
   assert.match(command, /cos\(t\//);
   assert.match(command, /c=0x9bbcff/);
   assert.match(command, /c=0xb8fff6/);
   assert.match(command, /c=0xfff3d6/);
+  assert.match(command, /gblur=sigma=1\./);
   assert.match(command, /gblur=sigma=/);
+  assert.match(command, /tmix=frames=3/);
   assert.match(command, /-map \[vout\]/);
   assert.match(command, /eq=brightness=/);
   assert.match(command, /libx264/);
