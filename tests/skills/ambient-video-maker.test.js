@@ -7,8 +7,10 @@ test("ambient-video-maker skill doc mentions required terms", () => {
     new URL("../../skills/ambient-video-maker/SKILL.md", import.meta.url),
     "utf8"
   );
+  assert.match(body, /ambient_video_generate/);
   assert.match(body, /ambient_music_build/);
   assert.match(body, /ambient_media_render/);
   assert.match(body, /睡眠/);
   assert.match(body, /钢琴/);
+  assert.match(body, /回退|fallback/);
 });

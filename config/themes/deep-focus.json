@@ -9,6 +9,12 @@
   "prompt_seed": "steady low-frequency pad, sparse piano stabs, no percussion",
   "default_duration_sec": 3600,
   "allowed_duration_sec": [1800, 3600, 7200],
+  "default_master_duration_sec": 180,
+  "master_duration_tiers_sec": [
+    { "max_target_sec": 1800, "master_duration_sec": 120 },
+    { "max_target_sec": 7200, "master_duration_sec": 180 },
+    { "master_duration_sec": 240 }
+  ],
   "video_template_id": "gradient-drift",
   "crossfade_duration_sec": 5,
   "target_lufs": -21,

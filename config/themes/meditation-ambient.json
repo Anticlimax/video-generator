@@ -9,6 +9,12 @@
   "prompt_seed": "resonant bells, long sustain, very low attack, no rhythmic percussion",
   "default_duration_sec": 3000,
   "allowed_duration_sec": [1800, 3000, 5400],
+  "default_master_duration_sec": 240,
+  "master_duration_tiers_sec": [
+    { "max_target_sec": 1800, "master_duration_sec": 180 },
+    { "max_target_sec": 5400, "master_duration_sec": 240 },
+    { "master_duration_sec": 300 }
+  ],
   "video_template_id": "soft-stars",
   "crossfade_duration_sec": 7,
   "target_lufs": -24,

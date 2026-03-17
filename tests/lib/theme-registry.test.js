@@ -23,3 +23,14 @@ test("resolveTheme falls back to keyword scoring before failing", async () => {
   });
   assert.equal(theme.id, "sleep-piano");
 });
+
+test("all themes define master duration defaults and tiers", async () => {
+  const registry = await loadThemeRegistry();
+
+  for (const theme of registry.values()) {
+    assert.equal(typeof theme.default_master_duration_sec, "number", theme.id);
+    assert.ok(theme.default_master_duration_sec > 0, theme.id);
+    assert.ok(Array.isArray(theme.master_duration_tiers_sec), theme.id);
+    assert.ok(theme.master_duration_tiers_sec.length > 0, theme.id);
+  }
+});
