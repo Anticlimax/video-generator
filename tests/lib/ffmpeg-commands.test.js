@@ -35,7 +35,6 @@ test("buildVideoLoopArgs builds a drifting star field for soft-stars", () => {
   assert.match(command, /mod\(/);
   assert.match(command, /main_w\+overlay_w/);
   assert.match(command, /sin\(t\//);
-  assert.match(command, /cos\(t\//);
   assert.match(command, /c=0x9bbcff/);
   assert.match(command, /c=0xb8fff6/);
   assert.match(command, /c=0xfff3d6/);
@@ -43,6 +42,24 @@ test("buildVideoLoopArgs builds a drifting star field for soft-stars", () => {
   assert.match(command, /-map \[vout\]/);
   assert.match(command, /eq=brightness=/);
   assert.match(command, /libx264/);
+});
+
+test("buildVideoLoopArgs varies soft-stars layout across output targets", () => {
+  const argsA = buildVideoLoopArgs({
+    videoTemplateId: "soft-stars",
+    durationTargetSec: 120,
+    outputPath: "jobs/job_a/loop_video.mp4"
+  });
+  const argsB = buildVideoLoopArgs({
+    videoTemplateId: "soft-stars",
+    durationTargetSec: 120,
+    outputPath: "jobs/job_b/loop_video.mp4"
+  });
+
+  const filterA = argsA[argsA.indexOf("-filter_complex") + 1];
+  const filterB = argsB[argsB.indexOf("-filter_complex") + 1];
+
+  assert.notEqual(filterA, filterB);
 });
 
 test("buildAudioExtendArgs includes crossfade and loudnorm filters", () => {

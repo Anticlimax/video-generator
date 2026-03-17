@@ -18,6 +18,82 @@ export function buildAudioExtendArgs({
   ];
 }
 
+function hashSeed(input) {
+  let hash = 2166136261;
+  const text = String(input || "");
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function createRng(seedInput) {
+  let state = hashSeed(seedInput) || 1;
+  return () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+function sample(rng, values) {
+  return values[Math.floor(rng() * values.length)];
+}
+
+function randomInt(rng, min, max) {
+  return Math.floor(rng() * (max - min + 1)) + min;
+}
+
+function randomFloat(rng, min, max, digits = 3) {
+  return Number((min + rng() * (max - min)).toFixed(digits));
+}
+
+function buildSoftStars(outputPath) {
+  const rng = createRng(outputPath);
+  const palette = ["0x9bbcff", "0xb8fff6", "0xfff3d6", "0xd7e4ff"];
+  const sizes = [4, 4, 4, 8, 8, 8, 16, 16, 32, 4, 8, 16];
+  const stars = [];
+
+  for (const size of sizes) {
+    const color = sample(rng, palette);
+    const alphaBySize = {
+      4: randomInt(rng, 190, 225),
+      8: randomInt(rng, 160, 195),
+      16: randomInt(rng, 100, 135),
+      32: randomInt(rng, 72, 92)
+    };
+    const haloBySize = {
+      4: { patch: randomInt(rng, 11, 14), alpha: randomInt(rng, 24, 36) },
+      8: { patch: randomInt(rng, 20, 26), alpha: randomInt(rng, 28, 40) },
+      16: { patch: randomInt(rng, 38, 48), alpha: randomInt(rng, 32, 46) },
+      32: { patch: randomInt(rng, 64, 78), alpha: randomInt(rng, 22, 30) }
+    };
+    const speed = randomInt(rng, 44, 68);
+    const direction = rng() > 0.5 ? 1 : -1;
+    const startX = randomInt(rng, -900, 1400);
+    const baseY = randomInt(rng, 56, 640);
+    const yAmplitude = randomInt(rng, 4, 20);
+    const yPeriod = randomInt(rng, 34, 64);
+    const yPhase = randomFloat(rng, 0.1, 6.2, 2);
+    const driftY = randomFloat(rng, -2.2, 2.2, 2);
+    const xWobble = randomInt(rng, 3, 18);
+    const xWobblePeriod = randomInt(rng, 17, 41);
+    const xPhase = randomFloat(rng, 0.1, 6.2, 2);
+
+    stars.push({
+      size,
+      color,
+      alpha: alphaBySize[size],
+      patchSize: haloBySize[size].patch,
+      haloAlpha: haloBySize[size].alpha,
+      centerX: `mod(${startX}${direction > 0 ? "+" : "-"}${speed}*t,main_w+overlay_w)-overlay_w/2+${xWobble}*sin(t/${xWobblePeriod}+${xPhase})`,
+      centerY: `${baseY}${driftY >= 0 ? "+" : ""}${driftY}*t+${yAmplitude}*sin(t/${yPeriod}+${yPhase})`
+    });
+  }
+
+  return stars;
+}
+
 export function buildVideoLoopArgs({
   videoTemplateId,
   durationTargetSec,
@@ -38,80 +114,7 @@ export function buildVideoLoopArgs({
   }
 
   if (videoTemplateId === "soft-stars") {
-    const stars = [
-      {
-        size: 4,
-        color: "0x9bbcff",
-        alpha: 220,
-        centerX: "mod(-80+62*t,main_w+overlay_w)-overlay_w/2",
-        centerY: "62+14*cos(t/47)+5*sin(t/23)",
-        patchSize: 12,
-        haloAlpha: 34
-      },
-      {
-        size: 4,
-        color: "0xb8fff6",
-        alpha: 205,
-        centerX: "mod(220+58*t,main_w+overlay_w)-overlay_w/2",
-        centerY: "540+12*sin(t/41)+4*cos(t/21)",
-        patchSize: 12,
-        haloAlpha: 30
-      },
-      {
-        size: 8,
-        color: "0xfff3d6",
-        alpha: 188,
-        centerX: "mod(-260+55*t,main_w+overlay_w)-overlay_w/2",
-        centerY: "166+18*cos(t/45)+6*sin(t/29)",
-        patchSize: 22,
-        haloAlpha: 38
-      },
-      {
-        size: 8,
-        color: "0xd7e4ff",
-        alpha: 176,
-        centerX: "mod(540+61*t,main_w+overlay_w)-overlay_w/2",
-        centerY: "104+15*sin(t/43)+5*cos(t/31)",
-        patchSize: 22,
-        haloAlpha: 34
-      },
-      {
-        size: 16,
-        color: "0x9bbcff",
-        alpha: 120,
-        centerX: "mod(-420+49*t,main_w+overlay_w)-overlay_w/2",
-        centerY: "420+11*cos(t/53)+4*sin(t/21)",
-        patchSize: 42,
-        haloAlpha: 42
-      },
-      {
-        size: 16,
-        color: "0xb8fff6",
-        alpha: 110,
-        centerX: "mod(840+47*t,main_w+overlay_w)-overlay_w/2",
-        centerY: "240+10*sin(t/48)+4*cos(t/24)",
-        patchSize: 40,
-        haloAlpha: 36
-      },
-      {
-        size: 32,
-        color: "0xfff3d6",
-        alpha: 84,
-        centerX: "mod(-700+44*t,main_w+overlay_w)-overlay_w/2",
-        centerY: "500+7*cos(t/52)+3*sin(t/18)",
-        patchSize: 72,
-        haloAlpha: 28
-      },
-      {
-        size: 32,
-        color: "0xd7e4ff",
-        alpha: 78,
-        centerX: "mod(1080+46*t,main_w+overlay_w)-overlay_w/2",
-        centerY: "120+6*sin(t/46)+3*cos(t/17)",
-        patchSize: 68,
-        haloAlpha: 24
-      }
-    ];
+    const stars = buildSoftStars(outputPath);
 
     const inputs = [
       "-f",
