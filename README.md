@@ -130,6 +130,88 @@ Direct cover generation for debugging:
 }
 ```
 
+## Telegram Entry
+
+Recommended first-pass Telegram commands:
+
+- `/ambient`: generate only
+- `/ambient_publish`: generate and upload to YouTube
+
+Preferred command format:
+
+```text
+/ambient <theme> | <style> | <duration>
+/ambient_publish <theme> | <style> | <duration>
+```
+
+Examples:
+
+```text
+/ambient ocean | calm piano, soft moonlight | 30m
+/ambient_publish rainy night | soft piano | 1h
+```
+
+Telegram handlers should normalize these fields before calling the plugin:
+
+- `theme` -> free-text theme input
+- `style` -> free-text style input
+- `duration` -> parsed to `duration_target_sec`
+- action -> `ambient_video_generate` or `ambient_video_publish`
+
+Natural language can be supported as a compatibility path, but not as the primary entry.
+
+Recommended natural-language policy:
+
+- Prefer slash-command parsing first
+- If the message is not a command, try to extract `theme`, `style`, and `duration`
+- Execute only when all three fields are confidently resolved
+- If any field is missing or ambiguous, send a confirmation prompt before starting
+
+Suggested confirmation message:
+
+```text
+我理解为：
+theme: ocean
+style: calm piano, soft moonlight
+duration: 30m
+action: 生成并上传
+
+回复“确认”后开始。
+```
+
+Recommended Telegram progress UX:
+
+- Keep a single message and edit it through the job lifecycle
+- Read `jobs/<job_id>/progress.json`
+- Map `stage`, `status`, `progress`, and final artifacts into human-readable updates
+
+Suggested progress message shape:
+
+```text
+任务：ocean | calm piano, soft moonlight | 30m
+状态：正在生成音乐
+进度：2/4
+```
+
+Suggested completion message shape:
+
+```text
+任务完成
+本地文件：outputs/example.mp4
+YouTube：https://www.youtube.com/watch?v=...
+```
+
+Reusable helper module for TG host integration:
+
+- [telegram-adapter.js](/Users/liyang/project/video-generate/src/lib/telegram-adapter.js)
+
+It provides:
+
+- slash-command parsing for `/ambient` and `/ambient_publish`
+- natural-language compatibility parsing with confirmation-required output
+- confirmation message rendering
+- progress message rendering from `progress.json`
+
 ## Outputs
 
 Generated assets are written to:
@@ -139,3 +221,11 @@ Generated assets are written to:
 - `jobs/<job_id>/extended_audio.wav`
 - `jobs/<job_id>/loop_video.mp4`
 - `outputs/<output_name>.mp4`
+
+## Portable Setup
+
+For a new machine, use:
+
+- [bootstrap-local.sh](/Users/liyang/project/video-generate/scripts/bootstrap-local.sh)
+- [verify-portable-setup.sh](/Users/liyang/project/video-generate/scripts/verify-portable-setup.sh)
+- [portable-deployment.md](/Users/liyang/project/video-generate/docs/setup/portable-deployment.md)
