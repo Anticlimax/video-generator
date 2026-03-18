@@ -11,6 +11,7 @@ import { buildMusicPrompt } from "../src/lib/music-prompt.js";
 import { resolveMusicProvider } from "../src/lib/music-provider.js";
 import { buildRenderPlan } from "../src/lib/render-plan.js";
 import { buildVideoLoopArgs } from "../src/lib/ffmpeg-commands.js";
+import { renderTelegramProgressMessage } from "../src/lib/telegram-adapter.js";
 
 const NANO_BANANA_SCRIPT_PATH = path.join(
   process.env.HOME || "",
@@ -153,8 +154,43 @@ async function emitProgress(api, job, payload) {
   if (typeof runtimeConfig?.progressObserver === "function") {
     await runtimeConfig.progressObserver(progress);
   }
+  await relayTelegramProgress(runtimeConfig, progress);
 
   return progress;
+}
+
+async function relayTelegramProgress(runtimeConfig, progress) {
+  const chatId = String(progress.telegram_chat_id || "").trim();
+  const messageId = String(progress.telegram_message_id || "").trim();
+  const threadId = String(progress.telegram_thread_id || "").trim();
+
+  if (!chatId || !messageId) {
+    return;
+  }
+
+  if (typeof runtimeConfig?.telegramProgressRelayImpl === "function") {
+    await runtimeConfig.telegramProgressRelayImpl(progress);
+    return;
+  }
+
+  const args = [
+    "message",
+    "edit",
+    "--channel",
+    "telegram",
+    "--target",
+    chatId,
+    "--message-id",
+    messageId,
+    "--message",
+    renderTelegramProgressMessage(progress)
+  ];
+
+  if (threadId) {
+    args.push("--thread-id", threadId);
+  }
+
+  await runCommand("openclaw", args);
 }
 
 async function resolveRuntimeConfig(api) {
@@ -229,7 +265,10 @@ const ambientVideoGenerateInputSchema = {
     seed: { type: "string" },
     mode: { type: "string", enum: ["mock", "elevenlabs", "infsh"] },
     video_template_id: { type: "string" },
-    output_name: { type: "string" }
+    output_name: { type: "string" },
+    telegram_chat_id: { type: "string" },
+    telegram_message_id: { type: "string" },
+    telegram_thread_id: { type: "string" }
   },
 };
 
@@ -258,6 +297,9 @@ const ambientVideoPublishInputSchema = {
     mode: { type: "string", enum: ["mock", "elevenlabs", "infsh"] },
     video_template_id: { type: "string" },
     output_name: { type: "string" },
+    telegram_chat_id: { type: "string" },
+    telegram_message_id: { type: "string" },
+    telegram_thread_id: { type: "string" },
     youtube_title: { type: "string" },
     youtube_description: { type: "string" },
     youtube_tags: {
@@ -714,6 +756,10 @@ async function runAmbientVideoGenerate(api, args) {
     message: "任务已创建，等待开始处理",
     theme: themeText,
     style: styleText,
+    duration_target_sec: durationSec,
+    telegram_chat_id: args?.telegram_chat_id,
+    telegram_message_id: args?.telegram_message_id,
+    telegram_thread_id: args?.telegram_thread_id,
     artifacts: baseArtifacts
   });
   await emitProgress(api, progressJob, {
@@ -723,6 +769,10 @@ async function runAmbientVideoGenerate(api, args) {
     message: theme?.id ? `主题已解析为 ${theme.id}` : "未命中预设主题族，按自由文本生成",
     theme: themeText,
     style: styleText,
+    duration_target_sec: durationSec,
+    telegram_chat_id: args?.telegram_chat_id,
+    telegram_message_id: args?.telegram_message_id,
+    telegram_thread_id: args?.telegram_thread_id,
     artifacts: baseArtifacts
   });
   await emitProgress(api, progressJob, {
@@ -732,6 +782,10 @@ async function runAmbientVideoGenerate(api, args) {
     message: "正在生成音乐母带",
     theme: themeText,
     style: styleText,
+    duration_target_sec: durationSec,
+    telegram_chat_id: args?.telegram_chat_id,
+    telegram_message_id: args?.telegram_message_id,
+    telegram_thread_id: args?.telegram_thread_id,
     artifacts: baseArtifacts
   });
 
@@ -756,6 +810,10 @@ async function runAmbientVideoGenerate(api, args) {
     message: "音乐母带已生成",
     theme: themeText,
     style: styleText,
+    duration_target_sec: durationSec,
+    telegram_chat_id: args?.telegram_chat_id,
+    telegram_message_id: args?.telegram_message_id,
+    telegram_thread_id: args?.telegram_thread_id,
     artifacts: musicArtifacts
   });
 
@@ -767,6 +825,10 @@ async function runAmbientVideoGenerate(api, args) {
     message: "正在生成封面图",
     theme: themeText,
     style: styleText,
+    duration_target_sec: durationSec,
+    telegram_chat_id: args?.telegram_chat_id,
+    telegram_message_id: args?.telegram_message_id,
+    telegram_thread_id: args?.telegram_thread_id,
     artifacts: musicArtifacts
   });
   try {
@@ -790,6 +852,10 @@ async function runAmbientVideoGenerate(api, args) {
     message: coverResult?.data?.image_path ? "封面图已生成" : "封面图生成失败，已回退到默认视频模板",
     theme: themeText,
     style: styleText,
+    duration_target_sec: durationSec,
+    telegram_chat_id: args?.telegram_chat_id,
+    telegram_message_id: args?.telegram_message_id,
+    telegram_thread_id: args?.telegram_thread_id,
     artifacts: coverArtifacts
   });
 
@@ -800,6 +866,10 @@ async function runAmbientVideoGenerate(api, args) {
     message: "正在合成静态视频与长音频",
     theme: themeText,
     style: styleText,
+    duration_target_sec: durationSec,
+    telegram_chat_id: args?.telegram_chat_id,
+    telegram_message_id: args?.telegram_message_id,
+    telegram_thread_id: args?.telegram_thread_id,
     artifacts: coverArtifacts
   });
 
@@ -821,6 +891,10 @@ async function runAmbientVideoGenerate(api, args) {
     message: "已生成完成",
     theme: themeText,
     style: styleText,
+    duration_target_sec: durationSec,
+    telegram_chat_id: args?.telegram_chat_id,
+    telegram_message_id: args?.telegram_message_id,
+    telegram_thread_id: args?.telegram_thread_id,
     artifacts: completedArtifacts
   });
 
@@ -856,6 +930,10 @@ async function runAmbientVideoPublish(api, args) {
     message: "发布任务已创建",
     theme: themeText,
     style: styleText,
+    duration_target_sec: Number(args?.duration_target_sec || 0),
+    telegram_chat_id: args?.telegram_chat_id,
+    telegram_message_id: args?.telegram_message_id,
+    telegram_thread_id: args?.telegram_thread_id,
     artifacts: {
       final_output_path: null,
       youtube_url: null
@@ -869,6 +947,10 @@ async function runAmbientVideoPublish(api, args) {
     message: "正在生成视频",
     theme: themeText,
     style: styleText,
+    duration_target_sec: Number(args?.duration_target_sec || 0),
+    telegram_chat_id: args?.telegram_chat_id,
+    telegram_message_id: args?.telegram_message_id,
+    telegram_thread_id: args?.telegram_thread_id,
     artifacts: {
       final_output_path: null,
       youtube_url: null
@@ -894,6 +976,10 @@ async function runAmbientVideoPublish(api, args) {
     message: "正在上传到 YouTube",
     theme: themeText,
     style: styleText,
+    duration_target_sec: Number(args?.duration_target_sec || 0),
+    telegram_chat_id: args?.telegram_chat_id,
+    telegram_message_id: args?.telegram_message_id,
+    telegram_thread_id: args?.telegram_thread_id,
     artifacts: {
       final_output_path: finalOutputPath,
       youtube_url: null
@@ -922,6 +1008,10 @@ async function runAmbientVideoPublish(api, args) {
     message: "视频已上传到 YouTube",
     theme: themeText,
     style: styleText,
+    duration_target_sec: Number(args?.duration_target_sec || 0),
+    telegram_chat_id: args?.telegram_chat_id,
+    telegram_message_id: args?.telegram_message_id,
+    telegram_thread_id: args?.telegram_thread_id,
     artifacts: {
       final_output_path: finalOutputPath,
       youtube_url: uploadResult.url

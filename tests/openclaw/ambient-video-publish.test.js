@@ -131,3 +131,78 @@ test("ambient_video_publish generates a video, uploads it, and returns YouTube l
     ["queued", "video_generating", "youtube_uploading", "completed"]
   );
 });
+
+test("ambient_video_publish relays telegram progress updates when telegram context is provided", async () => {
+  const tools = [];
+  const mp3Bytes = createMp3Buffer(2);
+  const relayEvents = [];
+
+  registerAmbientTools({
+    registerTool(tool) {
+      tools.push(tool);
+    },
+    config: {
+      elevenLabsApiKey: "test-key",
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        async arrayBuffer() {
+          return mp3Bytes.buffer.slice(
+            mp3Bytes.byteOffset,
+            mp3Bytes.byteOffset + mp3Bytes.byteLength
+          );
+        }
+      }),
+      coverGeneratorImpl: async ({ outputPath, prompt }) => {
+        const result = spawnSync(
+          "ffmpeg",
+          [
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=0x101828:s=1280x720:d=1",
+            "-frames:v",
+            "1",
+            outputPath
+          ],
+          { encoding: "utf8" }
+        );
+        assert.equal(result.status, 0, result.stderr);
+        return {
+          imagePath: outputPath,
+          prompt,
+          provider: "mock-cover"
+        };
+      },
+      youtubeUploadImpl: async () => ({
+        videoId: "relay123",
+        url: "https://www.youtube.com/watch?v=relay123",
+        studioUrl: "https://studio.youtube.com/video/relay123/edit"
+      }),
+      telegramProgressRelayImpl: async (event) => {
+        relayEvents.push(event);
+      }
+    }
+  });
+
+  const tool = tools.find((item) => item.name === "ambient_video_publish");
+  const result = await tool.execute("call_publish_relay_1", {
+    theme: "ocean",
+    style: "calm piano",
+    duration_target_sec: 8,
+    master_duration_sec: 2,
+    allow_nonstandard_duration: true,
+    output_name: "ambient-video-publish-relay",
+    mode: "elevenlabs",
+    youtube_title: "Ocean Calm Piano Relay",
+    telegram_chat_id: "123456",
+    telegram_message_id: "88"
+  });
+
+  assert.equal(result.data.ok, true);
+  assert.ok(relayEvents.length > 0);
+  assert.equal(relayEvents[0].telegram_chat_id, "123456");
+  assert.equal(relayEvents[0].telegram_message_id, "88");
+  assert.equal(relayEvents.at(-1)?.stage, "completed");
+});

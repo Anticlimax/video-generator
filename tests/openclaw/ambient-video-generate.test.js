@@ -250,6 +250,63 @@ test("ambient_video_generate writes progress.json and reports stage events", asy
   assert.equal(progressEvents.at(-1)?.progress, 100);
 });
 
+test("ambient_video_generate relays progress updates when telegram context is provided", async () => {
+  const tools = [];
+  const relayEvents = [];
+
+  registerAmbientTools({
+    registerTool(tool) {
+      tools.push(tool);
+    },
+    config: {
+      telegramProgressRelayImpl: async (event) => {
+        relayEvents.push(event);
+      },
+      coverGeneratorImpl: async ({ outputPath, prompt }) => {
+        const result = spawnSync(
+          "ffmpeg",
+          [
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=0x162033:s=1280x720:d=1",
+            "-frames:v",
+            "1",
+            outputPath
+          ],
+          { encoding: "utf8" }
+        );
+        assert.equal(result.status, 0, result.stderr);
+        return {
+          imagePath: outputPath,
+          prompt,
+          provider: "mock-cover"
+        };
+      }
+    }
+  });
+
+  const tool = tools.find((item) => item.name === "ambient_video_generate");
+  const result = await tool.execute("call_telegram_1", {
+    theme: "ocean",
+    style: "calm piano",
+    duration_target_sec: 8,
+    master_duration_sec: 2,
+    allow_nonstandard_duration: true,
+    output_name: "ambient-video-generate-telegram-progress",
+    mode: "mock",
+    telegram_chat_id: "123456",
+    telegram_message_id: "42"
+  });
+
+  assert.equal(result.data.ok, true);
+  assert.ok(relayEvents.length > 0);
+  assert.equal(relayEvents[0].telegram_chat_id, "123456");
+  assert.equal(relayEvents[0].telegram_message_id, "42");
+  assert.equal(relayEvents.at(-1)?.stage, "completed");
+});
+
 test("ambient_video_generate keeps unmatched free-text themes as generic input instead of forcing meditation-ambient", async () => {
   const tools = [];
   registerAmbientTools({
