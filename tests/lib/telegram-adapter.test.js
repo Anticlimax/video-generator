@@ -78,6 +78,26 @@ test("renderTelegramProgressMessage renders an in-flight progress message", () =
   );
 });
 
+test("renderTelegramProgressMessage omits empty theme slots", () => {
+  const message = renderTelegramProgressMessage({
+    theme: "",
+    style: "violent storm, heavy rain",
+    duration_target_sec: 600,
+    stage: "music_generating",
+    status: "running",
+    progress: 20
+  });
+
+  assert.equal(
+    message,
+    [
+      "任务：violent storm, heavy rain | 10m",
+      "状态：正在生成音乐",
+      "进度：20%"
+    ].join("\n")
+  );
+});
+
 test("renderTelegramProgressMessage renders a completion message with local file and YouTube link", () => {
   const message = renderTelegramProgressMessage({
     theme: "ocean",

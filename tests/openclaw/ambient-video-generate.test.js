@@ -307,6 +307,54 @@ test("ambient_video_generate relays progress updates when telegram context is pr
   assert.equal(relayEvents.at(-1)?.stage, "completed");
 });
 
+test("ambient_video_generate normalizes output names that already include .mp4", async () => {
+  const tools = [];
+
+  registerAmbientTools({
+    registerTool(tool) {
+      tools.push(tool);
+    },
+    config: {
+      coverGeneratorImpl: async ({ outputPath, prompt }) => {
+        const result = spawnSync(
+          "ffmpeg",
+          [
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=0x162033:s=1280x720:d=1",
+            "-frames:v",
+            "1",
+            outputPath
+          ],
+          { encoding: "utf8" }
+        );
+        assert.equal(result.status, 0, result.stderr);
+        return {
+          imagePath: outputPath,
+          prompt,
+          provider: "mock-cover"
+        };
+      }
+    }
+  });
+
+  const tool = tools.find((item) => item.name === "ambient_video_generate");
+  const result = await tool.execute("call_output_name_1", {
+    theme: "ocean",
+    style: "storm and rain",
+    duration_target_sec: 8,
+    master_duration_sec: 2,
+    allow_nonstandard_duration: true,
+    output_name: "storm-rain-10min.mp4",
+    mode: "mock"
+  });
+
+  assert.equal(result.data.ok, true);
+  assert.equal(result.data.final_output_path, "outputs/storm-rain-10min.mp4");
+});
+
 test("ambient_video_generate keeps unmatched free-text themes as generic input instead of forcing meditation-ambient", async () => {
   const tools = [];
   registerAmbientTools({

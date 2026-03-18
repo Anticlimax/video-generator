@@ -142,6 +142,12 @@ function toolResult(data) {
   };
 }
 
+function normalizeOutputName(value, fallback = "ambient-output") {
+  const raw = String(value || "").trim();
+  const base = raw || fallback;
+  return base.replace(/(?:\.mp4)+$/iu, "") || fallback;
+}
+
 async function emitProgress(api, job, payload) {
   const progress = {
     ...payload,
@@ -623,7 +629,7 @@ async function runAmbientMusicBuild(api, args) {
 
 async function runAmbientMediaRender(_api, args) {
   const job = await createJobWorkspace();
-  const outputName = String(args?.output_name || "ambient-output");
+  const outputName = normalizeOutputName(args?.output_name, "ambient-output");
   const finalOutputPath = path.join("outputs", `${outputName}.mp4`);
   const plan = buildRenderPlan({
     themeId: "sleep-piano",
@@ -740,9 +746,10 @@ async function runAmbientVideoGenerate(api, args) {
   const styleText = String(args?.style || "").trim();
 
   const durationSec = resolveTargetDurationSec(theme || {}, args);
-  const outputName =
-    String(args?.output_name || `${theme?.id || "custom"}-${durationSec}s`).trim() ||
-    `${theme?.id || "custom"}-${durationSec}s`;
+  const outputName = normalizeOutputName(
+    args?.output_name,
+    `${theme?.id || "custom"}-${durationSec}s`
+  );
 
   const baseArtifacts = {
     master_audio_path: null,

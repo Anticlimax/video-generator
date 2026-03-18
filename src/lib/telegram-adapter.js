@@ -52,6 +52,20 @@ function formatDurationShort(seconds) {
   return `${seconds}s`;
 }
 
+function buildTaskSummary(progress) {
+  const parts = [];
+  if (progress.theme) {
+    parts.push(progress.theme);
+  }
+  if (progress.style) {
+    parts.push(progress.style);
+  }
+  if (typeof progress.duration_target_sec === "number") {
+    parts.push(formatDurationShort(progress.duration_target_sec));
+  }
+  return parts.join(" | ");
+}
+
 function parseSlashCommand(text) {
   const match = text.match(COMMAND_PATTERN);
   if (!match?.groups) {
@@ -177,8 +191,9 @@ export function renderTelegramProgressMessage(progress) {
     return lines.join("\n");
   }
 
+  const taskSummary = buildTaskSummary(progress);
   return [
-    `任务：${progress.theme} | ${progress.style} | ${formatDurationShort(progress.duration_target_sec)}`,
+    `任务：${taskSummary || "处理中"}`,
     `状态：${STAGE_LABELS[progress.stage] || progress.message || progress.stage}`,
     `进度：${typeof progress.progress === "number" ? `${progress.progress}%` : "--"}`
   ].join("\n");
