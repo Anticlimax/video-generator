@@ -33,6 +33,15 @@ test("resolveTheme maps ocean prompts to meditation-ambient before sleep-piano k
   assert.equal(theme.id, "meditation-ambient");
 });
 
+test("resolveTheme returns null for unmatched aggressive themes instead of forcing a calm family", async () => {
+  const registry = await loadThemeRegistry();
+  const theme = resolveTheme(registry, {
+    theme: "furious fire",
+    style: "heavy rock guitar"
+  });
+  assert.equal(theme, null);
+});
+
 test("all themes define master duration defaults and tiers", async () => {
   const registry = await loadThemeRegistry();
 

@@ -249,3 +249,54 @@ test("ambient_video_generate writes progress.json and reports stage events", asy
   );
   assert.equal(progressEvents.at(-1)?.progress, 100);
 });
+
+test("ambient_video_generate keeps unmatched free-text themes as generic input instead of forcing meditation-ambient", async () => {
+  const tools = [];
+  registerAmbientTools({
+    registerTool(tool) {
+      tools.push(tool);
+    },
+    config: {
+      coverGeneratorImpl: async ({ outputPath, prompt }) => {
+        const result = spawnSync(
+          "ffmpeg",
+          [
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=0x331111:s=1280x720:d=1",
+            "-frames:v",
+            "1",
+            outputPath
+          ],
+          { encoding: "utf8" }
+        );
+        assert.equal(result.status, 0, result.stderr);
+        return {
+          imagePath: outputPath,
+          prompt,
+          provider: "mock-cover"
+        };
+      }
+    }
+  });
+
+  const tool = tools.find((item) => item.name === "ambient_video_generate");
+  const result = await tool.execute("call_4", {
+    theme: "furious fire",
+    style: "heavy rock guitar",
+    duration_target_sec: 60,
+    output_name: "furious-fire-generic",
+    mode: "mock"
+  });
+
+  assert.equal(result.data.ok, true);
+  assert.equal(result.data.theme_id, null);
+  assert.match(result.data.final_output_path, /furious-fire-generic\.mp4$/);
+  assert.equal(result.data.duration_sec, 60);
+  const probe = probeJson(result.data.final_output_path);
+  const streamKinds = probe.streams.map((stream) => stream.codec_type).sort();
+  assert.deepEqual(streamKinds, ["audio", "video"]);
+  assert.ok(Number(probe.format.duration) >= 59.5);
+});

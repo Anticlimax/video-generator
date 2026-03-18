@@ -62,5 +62,5 @@ export function resolveTheme(registry, input) {
     return bestTheme;
   }
 
-  throw new Error("theme_not_found");
+  return null;
 }

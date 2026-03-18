@@ -6,6 +6,16 @@ function toPositiveNumber(value) {
   return number;
 }
 
+function genericMasterDurationSec(targetDurationSec) {
+  if (targetDurationSec <= 1800) {
+    return 120;
+  }
+  if (targetDurationSec <= 7200) {
+    return 180;
+  }
+  return 240;
+}
+
 export function validateTargetDurationSec(theme, durationSec) {
   const normalizedDurationSec = toPositiveNumber(durationSec);
   const allowedDurations = Array.isArray(theme?.allowed_duration_sec)
@@ -42,5 +52,5 @@ export function selectMasterDurationSec(theme, targetDurationSec) {
     return fallbackDurationSec;
   }
 
-  return normalizedTargetDurationSec;
+  return genericMasterDurationSec(normalizedTargetDurationSec);
 }

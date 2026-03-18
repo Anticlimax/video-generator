@@ -453,8 +453,8 @@ async function runAmbientCoverGenerate(api, args) {
   await writeManifest(job, {
     ok: true,
     stage: "ambient_cover_generate",
-    themeId: resolvedTheme.id,
-    themeVersion: resolvedTheme.version,
+    themeId: resolvedTheme?.id || null,
+    themeVersion: resolvedTheme?.version || null,
     prompt,
     provider: coverResult.provider
   });
@@ -462,8 +462,8 @@ async function runAmbientCoverGenerate(api, args) {
   return toolResult({
     ok: true,
     job_id: job.jobId,
-    theme_id: resolvedTheme.id,
-    theme_version: resolvedTheme.version,
+    theme_id: resolvedTheme?.id || null,
+    theme_version: resolvedTheme?.version || null,
     image_path: coverResult.imagePath,
     prompt: coverResult.prompt,
     provider: coverResult.provider
@@ -482,18 +482,20 @@ async function runAmbientMusicBuild(api, args) {
   });
   const job = await createJobWorkspace();
   const prompt = buildMusicPrompt({
-    themeId: theme.id,
-    promptSeed: theme.prompt_seed
+    themeId: theme?.id || null,
+    promptSeed: theme?.prompt_seed || null,
+    theme: String(args?.theme || "").trim(),
+    style: String(args?.style || "").trim()
   });
 
   const normalized = await provider.normalizeResult({
     path: job.masterAudioPath
   });
-  const targetDurationSec = resolveTargetDurationSec(theme, args);
+  const targetDurationSec = resolveTargetDurationSec(theme || {}, args);
   const masterDurationSec =
     args?.master_duration_sec != null
       ? Number(args.master_duration_sec)
-      : selectMasterDurationSec(theme, targetDurationSec);
+      : selectMasterDurationSec(theme || {}, targetDurationSec);
 
   if (provider.name === "mock") {
     await ensureParentDir(job.masterAudioPath);
@@ -555,8 +557,8 @@ async function runAmbientMusicBuild(api, args) {
   await writeManifest(job, {
     ok: true,
     stage: "ambient_music_build",
-    themeId: theme.id,
-    themeVersion: theme.version,
+    themeId: theme?.id || null,
+    themeVersion: theme?.version || null,
     prompt,
     provider: provider.name,
     targetDurationSec,
@@ -566,8 +568,8 @@ async function runAmbientMusicBuild(api, args) {
   return toolResult({
     ok: true,
     job_id: job.jobId,
-    theme_id: theme.id,
-    theme_version: theme.version,
+    theme_id: theme?.id || null,
+    theme_version: theme?.version || null,
     master_audio_path: job.masterAudioPath,
     target_duration_sec: targetDurationSec,
     master_duration_sec: masterDurationSec,
@@ -695,9 +697,10 @@ async function runAmbientVideoGenerate(api, args) {
   const themeText = String(args?.theme || "").trim();
   const styleText = String(args?.style || "").trim();
 
-  const durationSec = resolveTargetDurationSec(theme, args);
+  const durationSec = resolveTargetDurationSec(theme || {}, args);
   const outputName =
-    String(args?.output_name || `${theme.id}-${durationSec}s`).trim() || `${theme.id}-${durationSec}s`;
+    String(args?.output_name || `${theme?.id || "custom"}-${durationSec}s`).trim() ||
+    `${theme?.id || "custom"}-${durationSec}s`;
 
   const baseArtifacts = {
     master_audio_path: null,
@@ -717,7 +720,7 @@ async function runAmbientVideoGenerate(api, args) {
     stage: "theme_resolved",
     status: "running",
     progress: 10,
-    message: `主题已解析为 ${theme.id}`,
+    message: theme?.id ? `主题已解析为 ${theme.id}` : "未命中预设主题族，按自由文本生成",
     theme: themeText,
     style: styleText,
     artifacts: baseArtifacts
@@ -733,7 +736,7 @@ async function runAmbientVideoGenerate(api, args) {
   });
 
   const musicResult = await runAmbientMusicBuild(api, {
-    theme_id: theme.id,
+    theme_id: theme?.id,
     theme: args?.theme,
     style: args?.style,
     duration_target_sec: durationSec,
@@ -768,7 +771,7 @@ async function runAmbientVideoGenerate(api, args) {
   });
   try {
     coverResult = await runAmbientCoverGenerate(api, {
-      theme_id: theme.id,
+      theme_id: theme?.id,
       theme: args?.theme,
       style: args?.style,
       output_name: outputName
@@ -804,7 +807,7 @@ async function runAmbientVideoGenerate(api, args) {
     master_audio_path: musicResult.data.master_audio_path,
     image_path: coverResult?.data?.image_path,
     duration_target_sec: durationSec,
-    video_template_id: String(args?.video_template_id || theme.video_template_id || "default-black"),
+    video_template_id: String(args?.video_template_id || theme?.video_template_id || "default-black"),
     output_name: outputName
   });
   const completedArtifacts = {
@@ -823,8 +826,8 @@ async function runAmbientVideoGenerate(api, args) {
 
   return toolResult({
     ok: true,
-    theme_id: theme.id,
-    theme_version: theme.version,
+    theme_id: theme?.id || null,
+    theme_version: theme?.version || null,
     master_job_id: musicResult.data.job_id,
     render_job_id: renderResult.data.job_id,
     master_audio_path: musicResult.data.master_audio_path,
@@ -905,8 +908,8 @@ async function runAmbientVideoPublish(api, args) {
     {
     videoPath: finalOutputPath,
     title: args?.youtube_title || buildYoutubeTitle({ theme: themeText, style: styleText, resolvedTheme: theme }),
-    description: args?.youtube_description || `Theme: ${themeText || theme.id}\nStyle: ${styleText || theme.music_style}`,
-    tags: args?.youtube_tags || [theme.id, ...(theme.tags || [])],
+    description: args?.youtube_description || `Theme: ${themeText || theme?.id || "custom"}\nStyle: ${styleText || theme?.music_style || "ambient"}`,
+    tags: args?.youtube_tags || [theme?.id || "custom", ...(theme?.tags || [])],
     privacyStatus: args?.privacy_status || "private",
     category: args?.youtube_category || "10"
     }
