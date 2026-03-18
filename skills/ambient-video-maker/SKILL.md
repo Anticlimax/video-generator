@@ -11,6 +11,13 @@ This skill is designed to work behind OpenClaw when a linked `tgbot` forwards Te
 - `/ambient` 和 `/ambient_publish` 作为更稳定的显式入口
 - 当消息解析置信度低时，先确认再执行
 - 执行中优先基于 `progress.json` 输出阶段化进度消息
+- 对完整 slash command 直接执行，不先追问
+- 不暴露内部 tool、内部参数、`theme_id`、fallback 或实现细节
+- 对 Telegram 入站消息，优先从标准上下文字段中提取并透传：
+  - `To` / `From` 中的 `telegram:<chat_id>`
+  - `MessageSid` 作为 `telegram_message_id`
+  - `MessageThreadId` 作为 `telegram_thread_id`
+  - 调用 `ambient_video_generate` / `ambient_video_publish` 时，能拿到这些字段就必须传入 tool args
 
 ## Prompts / Intent Signals
 
@@ -24,16 +31,19 @@ The skill maps aliases and keywords defined in each theme config (`sleep-piano`,
 ## Workflow
 
 1. Parse `theme`, `style`, and `duration` from user text or slash command input.
-2. If the message matches `/ambient <theme> | <style> | <duration>`, call `ambient_video_generate`.
-3. If the message matches `/ambient_publish <theme> | <style> | <duration>`, call `ambient_video_publish`.
+2. If the message matches `/ambient <theme> | <style> | <duration>`, call `ambient_video_generate` and 直接执行.
+3. If the message matches `/ambient_publish <theme> | <style> | <duration>`, call `ambient_video_publish` and 直接执行.
 4. For natural language, call `ambient_video_generate` as the default path only when `theme`, `style`, and `duration_target_sec` are clear enough; otherwise ask a clarification question first.
-5. Let the plugin resolve the free text to an internal canonical theme family, generate music, generate a static cover image, and render the final MP4.
-6. Return the final output path, resolved internal theme family, theme/version, master duration, and render summary from the one-shot tool.
-7. If the one-shot path fails, use the fallback / 回退 path with `ambient_cover_generate` or `ambient_music_build + ambient_media_render` so the operator can isolate whether the problem is in image generation, music generation, or media rendering.
+5. For Telegram sessions, map `To=telegram:<chat_id>` or `From=telegram:<chat_id>` to `telegram_chat_id`, map `MessageSid` to `telegram_message_id`, and map `MessageThreadId` to `telegram_thread_id` whenever present.
+6. Let the plugin resolve the free text to an internal canonical theme family, generate music, generate a static cover image, and render the final MP4.
+7. Return the final output path, resolved internal theme family, theme/version, master duration, and render summary from the one-shot tool.
+8. If the one-shot path fails, use the fallback / 回退 path with `ambient_cover_generate` or `ambient_music_build + ambient_media_render` so the operator can isolate whether the problem is in image generation, music generation, or media rendering.
 
 ## Reply Policy
 
 - 对自然语言，优先保持简洁回复，不重复底层实现细节
+- 不暴露内部 tool 名、内部参数名、`theme_id`、fallback、prompt 构造、分步实现策略
+- 不要向用户说 `ambient_video_generate`、`ambient_video_publish`、`ambient_music_build`、`allow_nonstandard_duration`
 - 低置信度时先确认，不直接开跑
 - 任务执行中，按阶段回报：
   - `正在生成音乐`
@@ -43,6 +53,33 @@ The skill maps aliases and keywords defined in each theme config (`sleep-piano`,
 - 完成后统一返回：
   - 本地输出路径
   - 如果有上传，再返回 YouTube 链接
+- 输出文件名要规范，不能出现重复扩展名，例如 `.mp4.mp4`
+- 默认对用户只展示他们原始主题和风格，不展示内部 `theme_id`
+
+### Completion Formats
+
+- `/ambient`
+
+```text
+已生成完成
+
+文件：<final_output_path>
+时长：<duration>
+主题：<theme>
+风格：<style>
+```
+
+- `/ambient_publish`
+
+```text
+已生成并上传完成
+
+文件：<final_output_path>
+时长：<duration>
+主题：<theme>
+风格：<style>
+YouTube：<youtube_url>
+```
 
 ## Duration Notes
 

@@ -55,9 +55,17 @@ Examples:
 
 1. If the incoming Telegram text matches `/ambient`, route to `ambient_video_generate`
 2. If it matches `/ambient_publish`, route to `ambient_video_publish`
-3. Otherwise treat it as natural language
-4. If natural language extraction is high confidence, execute
+3. Complete slash commands should be executed directly, not followed by a style-choice question
+4. Otherwise treat it as natural language
+5. If natural language extraction is high confidence, execute
 5. If confidence is low, reply with a confirmation message instead of starting immediately
+
+## Reply Guardrails
+
+- 不暴露内部实现、内部工具名、内部参数名、`theme_id`、fallback、prompt 构造或“我先换一种更稳的写法”这类开发者语言
+- 不对完整 `/ambient` 或 `/ambient_publish` 输入先给多选题
+- 默认只展示用户原始主题和风格，不展示内部归类结果
+- 不能出现重复扩展名，例如 `.mp4.mp4`
 
 ## Confirmation Policy
 
@@ -92,6 +100,14 @@ Important fields:
 - `artifacts.final_output_path`
 - `artifacts.youtube_url`
 
+Telegram context to forward into tool args whenever available:
+
+- `To=telegram:<chat_id>` or `From=telegram:<chat_id>` -> `telegram_chat_id`
+- `MessageSid` -> `telegram_message_id`
+- `MessageThreadId` -> `telegram_thread_id`
+
+Without these fields, the plugin can still generate media, but it cannot `edit` the Telegram progress message in place.
+
 Recommended stage mapping:
 
 - `queued` -> `任务已创建`
@@ -119,6 +135,29 @@ Suggested completion message:
 ```text
 任务完成
 本地文件：outputs/example.mp4
+YouTube：https://www.youtube.com/watch?v=...
+```
+
+For generate-only requests:
+
+```text
+已生成完成
+
+文件：outputs/example.mp4
+时长：10 分钟
+主题：暴躁火焰
+风格：摇滚
+```
+
+For generate-and-upload requests:
+
+```text
+已生成并上传完成
+
+文件：outputs/example.mp4
+时长：10 分钟
+主题：暴躁火焰
+风格：摇滚
 YouTube：https://www.youtube.com/watch?v=...
 ```
 
