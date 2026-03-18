@@ -24,6 +24,15 @@ test("resolveTheme falls back to keyword scoring before failing", async () => {
   assert.equal(theme.id, "sleep-piano");
 });
 
+test("resolveTheme maps ocean prompts to meditation-ambient before sleep-piano keyword bias", async () => {
+  const registry = await loadThemeRegistry();
+  const theme = resolveTheme(registry, {
+    theme: "ocean",
+    style: "calm piano"
+  });
+  assert.equal(theme.id, "meditation-ambient");
+});
+
 test("all themes define master duration defaults and tiers", async () => {
   const registry = await loadThemeRegistry();
 

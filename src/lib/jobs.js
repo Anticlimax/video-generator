@@ -32,7 +32,8 @@ export async function createJobWorkspace({
     extendedAudioPath: path.join(jobDir, "extended_audio.wav"),
     loopVideoPath: path.join(jobDir, "loop_video.mp4"),
     finalOutputPath: path.join(jobDir, "output.mp4"),
-    ffprobePath: path.join(jobDir, "ffprobe.json")
+    ffprobePath: path.join(jobDir, "ffprobe.json"),
+    progressPath: path.join(jobDir, "progress.json")
   };
 }
 
@@ -40,4 +41,9 @@ export async function writeManifest(job, manifest) {
   const file = path.join(job.jobDir, "manifest.json");
   await fs.writeFile(file, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   return file;
+}
+
+export async function writeProgress(job, progress) {
+  await fs.writeFile(job.progressPath, `${JSON.stringify(progress, null, 2)}\n`, "utf8");
+  return job.progressPath;
 }

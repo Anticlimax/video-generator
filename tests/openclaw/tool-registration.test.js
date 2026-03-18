@@ -13,7 +13,13 @@ test("registerAmbientTools registers ambient_music_build and ambient_media_rende
 
   assert.deepEqual(
     tools.map((tool) => tool.name),
-    ["ambient_music_build", "ambient_media_render", "ambient_video_generate", "ambient_cover_generate"]
+    [
+      "ambient_music_build",
+      "ambient_media_render",
+      "ambient_video_generate",
+      "ambient_cover_generate",
+      "ambient_video_publish"
+    ]
   );
   for (const tool of tools) {
     assert.equal(typeof tool.parameters, "object");
@@ -27,4 +33,9 @@ test("registerAmbientTools registers ambient_music_build and ambient_media_rende
   assert.equal(Array.isArray(videoTool.parameters.required), false);
   assert.equal(videoTool.parameters.properties.theme?.type, "string");
   assert.equal(videoTool.parameters.properties.style?.type, "string");
+
+  const publishTool = tools.find((tool) => tool.name === "ambient_video_publish");
+  assert.ok(publishTool);
+  assert.equal(publishTool.parameters.properties.youtube_title?.type, "string");
+  assert.equal(publishTool.parameters.properties.privacy_status?.type, "string");
 });

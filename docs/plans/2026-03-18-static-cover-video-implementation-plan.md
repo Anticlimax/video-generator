@@ -38,4 +38,4 @@
 - 增加一条真实 OpenClaw smoke：
   - `theme=ocean`
   - `style=calm piano`
-  - `duration=8`
+  - `duration=30`

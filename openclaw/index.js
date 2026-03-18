@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { loadThemeRegistry, resolveTheme } from "../src/lib/theme-registry.js";
-import { createJobWorkspace, writeManifest } from "../src/lib/jobs.js";
+import { createJobWorkspace, writeManifest, writeProgress } from "../src/lib/jobs.js";
 import {
   selectMasterDurationSec,
   validateTargetDurationSec
@@ -15,6 +15,14 @@ import { buildVideoLoopArgs } from "../src/lib/ffmpeg-commands.js";
 const NANO_BANANA_SCRIPT_PATH = path.join(
   process.env.HOME || "",
   ".nvm/versions/node/v22.20.0/lib/node_modules/openclaw/skills/nano-banana-pro/scripts/generate_image.py"
+);
+const YOUTUBE_PUBLISHER_SCRIPT_PATH = path.join(
+  process.env.HOME || "",
+  ".openclaw/workspace/skills/youtube-publisher/scripts/youtube_upload.py"
+);
+const DEFAULT_OPENCLAW_CONFIG_PATH = path.join(
+  process.env.HOME || "",
+  ".openclaw/openclaw.json"
 );
 
 async function ensureParentDir(filePath) {
@@ -54,6 +62,32 @@ function runCommand(command, args) {
         return;
       }
       reject(new Error(`${command} exited with code ${code}\n${stderr}`));
+    });
+  });
+}
+
+function runCommandCapture(command, args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      stdio: ["ignore", "pipe", "pipe"]
+    });
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (chunk) => {
+      stdout += String(chunk);
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve({ stdout, stderr });
+        return;
+      }
+      reject(new Error(`${command} exited with code ${code}\n${stderr || stdout}`));
     });
   });
 }
@@ -105,6 +139,54 @@ function toolResult(data) {
     ],
     data
   };
+}
+
+async function emitProgress(api, job, payload) {
+  const progress = {
+    ...payload,
+    job_id: payload.job_id || job.jobId,
+    updated_at: new Date().toISOString()
+  };
+  await writeProgress(job, progress);
+
+  const runtimeConfig = await resolveRuntimeConfig(api);
+  if (typeof runtimeConfig?.progressObserver === "function") {
+    await runtimeConfig.progressObserver(progress);
+  }
+
+  return progress;
+}
+
+async function resolveRuntimeConfig(api) {
+  const directConfig = api?.config && typeof api.config === "object" ? api.config : {};
+  const needsFallback =
+    !directConfig.elevenLabsApiKey &&
+    !directConfig.geminiApiKey &&
+    !directConfig.infshAppId &&
+    !directConfig.mode;
+
+  if (!needsFallback) {
+    return directConfig;
+  }
+
+  const configPath = api?.configFilePath || directConfig?.configFilePath || DEFAULT_OPENCLAW_CONFIG_PATH;
+
+  try {
+    const raw = await fs.readFile(configPath, "utf8");
+    const parsed = JSON.parse(raw);
+    const pluginConfig =
+      parsed?.plugins?.entries?.["ambient-media-tools"]?.config &&
+      typeof parsed.plugins.entries["ambient-media-tools"].config === "object"
+        ? parsed.plugins.entries["ambient-media-tools"].config
+        : {};
+
+    return {
+      ...pluginConfig,
+      ...directConfig
+    };
+  } catch {
+    return directConfig;
+  }
 }
 
 const ambientMusicBuildInputSchema = {
@@ -162,6 +244,34 @@ const ambientCoverGenerateInputSchema = {
   }
 };
 
+const ambientVideoPublishInputSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    theme_id: { type: "string" },
+    theme: { type: "string" },
+    style: { type: "string" },
+    duration_target_sec: { type: "number" },
+    master_duration_sec: { type: "number" },
+    allow_nonstandard_duration: { type: "boolean" },
+    seed: { type: "string" },
+    mode: { type: "string", enum: ["mock", "elevenlabs", "infsh"] },
+    video_template_id: { type: "string" },
+    output_name: { type: "string" },
+    youtube_title: { type: "string" },
+    youtube_description: { type: "string" },
+    youtube_tags: {
+      type: "array",
+      items: { type: "string" }
+    },
+    privacy_status: {
+      type: "string",
+      enum: ["private", "public", "unlisted"]
+    },
+    youtube_category: { type: "string" }
+  }
+};
+
 function resolveTargetDurationSec(theme, args) {
   const requestedDurationSec = Number(args?.duration_target_sec || theme.default_duration_sec || 0);
   if (args?.allow_nonstandard_duration) {
@@ -211,9 +321,89 @@ function buildCoverPrompt({ theme, style, resolvedTheme }) {
   return parts.join(" ");
 }
 
+function normalizeYoutubeTags(tags) {
+  if (Array.isArray(tags)) {
+    return tags.map((tag) => String(tag).trim()).filter(Boolean);
+  }
+  if (typeof tags === "string") {
+    return tags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function buildYoutubeTitle({ theme, style, resolvedTheme }) {
+  if (style && theme) {
+    return `${theme} - ${style}`;
+  }
+  if (theme) {
+    return `${theme} ambient video`;
+  }
+  return `${resolvedTheme?.label || "Ambient"} ambient video`;
+}
+
+async function runYoutubeUpload(api, args) {
+  const runtimeConfig = await resolveRuntimeConfig(api);
+  const videoPath = String(args.videoPath).trim();
+  const title = String(args.title).trim();
+  const description = String(args.description || "").trim();
+  const tags = normalizeYoutubeTags(args.tags);
+  const privacyStatus = String(args.privacyStatus || "private").trim();
+  const category = String(args.category || "10").trim();
+
+  if (typeof runtimeConfig?.youtubeUploadImpl === "function") {
+    return runtimeConfig.youtubeUploadImpl({
+      videoPath,
+      title,
+      description,
+      tags,
+      privacyStatus,
+      category
+    });
+  }
+
+  const commandArgs = [
+    YOUTUBE_PUBLISHER_SCRIPT_PATH,
+    "upload",
+    videoPath,
+    "--title",
+    title,
+    "--description",
+    description,
+    "--privacy",
+    privacyStatus,
+    "--category",
+    category
+  ];
+
+  if (tags.length > 0) {
+    commandArgs.push("--tags", ...tags);
+  }
+
+  const { stdout, stderr } = await runCommandCapture("python3", commandArgs);
+  const output = `${stdout}\n${stderr}`;
+  const videoIdMatch = output.match(/视频 ID:\s*([A-Za-z0-9_-]+)/);
+  const urlMatch = output.match(/链接:\s*(https:\/\/www\.youtube\.com\/watch\?v=[^\s]+)/);
+  const studioUrlMatch = output.match(/Studio:\s*(https:\/\/studio\.youtube\.com\/video\/[^\s]+)/);
+
+  if (!videoIdMatch || !urlMatch) {
+    throw new Error("youtube_upload_parse_failed");
+  }
+
+  return {
+    videoId: videoIdMatch[1],
+    url: urlMatch[1],
+    studioUrl: studioUrlMatch?.[1] || null
+  };
+}
+
 async function runCoverGenerator(api, { outputPath, prompt }) {
-  if (typeof api?.config?.coverGeneratorImpl === "function") {
-    return api.config.coverGeneratorImpl({ outputPath, prompt });
+  const runtimeConfig = await resolveRuntimeConfig(api);
+
+  if (typeof runtimeConfig?.coverGeneratorImpl === "function") {
+    return runtimeConfig.coverGeneratorImpl({ outputPath, prompt });
   }
 
   const args = [
@@ -229,8 +419,8 @@ async function runCoverGenerator(api, { outputPath, prompt }) {
     "16:9"
   ];
 
-  if (api?.config?.geminiApiKey) {
-    args.push("--api-key", String(api.config.geminiApiKey));
+  if (runtimeConfig?.geminiApiKey) {
+    args.push("--api-key", String(runtimeConfig.geminiApiKey));
   }
 
   await runCommand("uv", args);
@@ -283,11 +473,12 @@ async function runAmbientCoverGenerate(api, args) {
 async function runAmbientMusicBuild(api, args) {
   const registry = await loadThemeRegistry();
   const theme = resolveThemeFromArgs(registry, args);
+  const runtimeConfig = await resolveRuntimeConfig(api);
 
   const provider = resolveMusicProvider({
-    mode: args?.mode || api?.config?.mode || "mock",
-    infshAppId: api?.config?.infshAppId,
-    elevenLabsApiKey: api?.config?.elevenLabsApiKey
+    mode: args?.mode || runtimeConfig?.mode || "mock",
+    infshAppId: runtimeConfig?.infshAppId,
+    elevenLabsApiKey: runtimeConfig?.elevenLabsApiKey
   });
   const job = await createJobWorkspace();
   const prompt = buildMusicPrompt({
@@ -325,7 +516,7 @@ async function runAmbientMusicBuild(api, args) {
       prompt,
       durationSec: masterDurationSec
     });
-    const fetchImpl = api?.config?.fetchImpl || globalThis.fetch;
+    const fetchImpl = runtimeConfig?.fetchImpl || globalThis.fetch;
     if (!fetchImpl) {
       throw new Error("fetch_unavailable");
     }
@@ -500,8 +691,47 @@ async function runAmbientMediaRender(_api, args) {
 async function runAmbientVideoGenerate(api, args) {
   const registry = await loadThemeRegistry();
   const theme = resolveThemeFromArgs(registry, args);
+  const progressJob = await createJobWorkspace();
+  const themeText = String(args?.theme || "").trim();
+  const styleText = String(args?.style || "").trim();
 
   const durationSec = resolveTargetDurationSec(theme, args);
+  const outputName =
+    String(args?.output_name || `${theme.id}-${durationSec}s`).trim() || `${theme.id}-${durationSec}s`;
+
+  const baseArtifacts = {
+    master_audio_path: null,
+    cover_image_path: null,
+    final_output_path: null
+  };
+  await emitProgress(api, progressJob, {
+    stage: "queued",
+    status: "running",
+    progress: 0,
+    message: "任务已创建，等待开始处理",
+    theme: themeText,
+    style: styleText,
+    artifacts: baseArtifacts
+  });
+  await emitProgress(api, progressJob, {
+    stage: "theme_resolved",
+    status: "running",
+    progress: 10,
+    message: `主题已解析为 ${theme.id}`,
+    theme: themeText,
+    style: styleText,
+    artifacts: baseArtifacts
+  });
+  await emitProgress(api, progressJob, {
+    stage: "music_generating",
+    status: "running",
+    progress: 20,
+    message: "正在生成音乐母带",
+    theme: themeText,
+    style: styleText,
+    artifacts: baseArtifacts
+  });
+
   const musicResult = await runAmbientMusicBuild(api, {
     theme_id: theme.id,
     theme: args?.theme,
@@ -512,11 +742,30 @@ async function runAmbientVideoGenerate(api, args) {
     seed: args?.seed,
     mode: args?.mode
   });
-
-  const outputName =
-    String(args?.output_name || `${theme.id}-${durationSec}s`).trim() || `${theme.id}-${durationSec}s`;
+  const musicArtifacts = {
+    ...baseArtifacts,
+    master_audio_path: musicResult.data.master_audio_path
+  };
+  await emitProgress(api, progressJob, {
+    stage: "music_ready",
+    status: "running",
+    progress: 45,
+    message: "音乐母带已生成",
+    theme: themeText,
+    style: styleText,
+    artifacts: musicArtifacts
+  });
 
   let coverResult = null;
+  await emitProgress(api, progressJob, {
+    stage: "cover_generating",
+    status: "running",
+    progress: 55,
+    message: "正在生成封面图",
+    theme: themeText,
+    style: styleText,
+    artifacts: musicArtifacts
+  });
   try {
     coverResult = await runAmbientCoverGenerate(api, {
       theme_id: theme.id,
@@ -527,6 +776,29 @@ async function runAmbientVideoGenerate(api, args) {
   } catch {
     coverResult = null;
   }
+  const coverArtifacts = {
+    ...musicArtifacts,
+    cover_image_path: coverResult?.data?.image_path || null
+  };
+  await emitProgress(api, progressJob, {
+    stage: "cover_ready",
+    status: "running",
+    progress: 70,
+    message: coverResult?.data?.image_path ? "封面图已生成" : "封面图生成失败，已回退到默认视频模板",
+    theme: themeText,
+    style: styleText,
+    artifacts: coverArtifacts
+  });
+
+  await emitProgress(api, progressJob, {
+    stage: "video_rendering",
+    status: "running",
+    progress: 85,
+    message: "正在合成静态视频与长音频",
+    theme: themeText,
+    style: styleText,
+    artifacts: coverArtifacts
+  });
 
   const renderResult = await runAmbientMediaRender(api, {
     master_audio_path: musicResult.data.master_audio_path,
@@ -534,6 +806,19 @@ async function runAmbientVideoGenerate(api, args) {
     duration_target_sec: durationSec,
     video_template_id: String(args?.video_template_id || theme.video_template_id || "default-black"),
     output_name: outputName
+  });
+  const completedArtifacts = {
+    ...coverArtifacts,
+    final_output_path: renderResult.data.final_output_path
+  };
+  await emitProgress(api, progressJob, {
+    stage: "completed",
+    status: "done",
+    progress: 100,
+    message: "已生成完成",
+    theme: themeText,
+    style: styleText,
+    artifacts: completedArtifacts
   });
 
   return toolResult({
@@ -548,7 +833,110 @@ async function runAmbientVideoGenerate(api, args) {
     final_output_path: renderResult.data.final_output_path,
     duration_sec: durationSec,
     ffprobe_summary: renderResult.data.ffprobe_summary,
-    file_sizes: renderResult.data.file_sizes
+    file_sizes: renderResult.data.file_sizes,
+    progress_path: progressJob.progressPath
+  });
+}
+
+async function runAmbientVideoPublish(api, args) {
+  const registry = await loadThemeRegistry();
+  const theme = resolveThemeFromArgs(registry, args);
+  const publishJob = await createJobWorkspace();
+  const runtimeConfig = await resolveRuntimeConfig(api);
+  const themeText = String(args?.theme || "").trim();
+  const styleText = String(args?.style || "").trim();
+
+  await emitProgress(api, publishJob, {
+    stage: "queued",
+    status: "running",
+    progress: 0,
+    message: "发布任务已创建",
+    theme: themeText,
+    style: styleText,
+    artifacts: {
+      final_output_path: null,
+      youtube_url: null
+    }
+  });
+
+  await emitProgress(api, publishJob, {
+    stage: "video_generating",
+    status: "running",
+    progress: 35,
+    message: "正在生成视频",
+    theme: themeText,
+    style: styleText,
+    artifacts: {
+      final_output_path: null,
+      youtube_url: null
+    }
+  });
+
+  const videoResult = await runAmbientVideoGenerate(
+    {
+      ...api,
+      config: {
+        ...runtimeConfig,
+        progressObserver: undefined
+      }
+    },
+    args
+  );
+  const finalOutputPath = videoResult.data.final_output_path;
+
+  await emitProgress(api, publishJob, {
+    stage: "youtube_uploading",
+    status: "running",
+    progress: 85,
+    message: "正在上传到 YouTube",
+    theme: themeText,
+    style: styleText,
+    artifacts: {
+      final_output_path: finalOutputPath,
+      youtube_url: null
+    }
+  });
+
+  const uploadResult = await runYoutubeUpload(
+    {
+      ...api,
+      config: runtimeConfig
+    },
+    {
+    videoPath: finalOutputPath,
+    title: args?.youtube_title || buildYoutubeTitle({ theme: themeText, style: styleText, resolvedTheme: theme }),
+    description: args?.youtube_description || `Theme: ${themeText || theme.id}\nStyle: ${styleText || theme.music_style}`,
+    tags: args?.youtube_tags || [theme.id, ...(theme.tags || [])],
+    privacyStatus: args?.privacy_status || "private",
+    category: args?.youtube_category || "10"
+    }
+  );
+
+  await emitProgress(api, publishJob, {
+    stage: "completed",
+    status: "done",
+    progress: 100,
+    message: "视频已上传到 YouTube",
+    theme: themeText,
+    style: styleText,
+    artifacts: {
+      final_output_path: finalOutputPath,
+      youtube_url: uploadResult.url
+    }
+  });
+
+  return toolResult({
+    ok: true,
+    theme_id: videoResult.data.theme_id,
+    theme_version: videoResult.data.theme_version,
+    final_output_path: finalOutputPath,
+    duration_sec: videoResult.data.duration_sec,
+    youtube_video_id: uploadResult.videoId,
+    youtube_url: uploadResult.url,
+    youtube_studio_url: uploadResult.studioUrl,
+    ffprobe_summary: videoResult.data.ffprobe_summary,
+    file_sizes: videoResult.data.file_sizes,
+    progress_path: publishJob.progressPath
   });
 }
 
@@ -590,6 +978,16 @@ export function registerAmbientTools(api) {
     schema: ambientCoverGenerateInputSchema,
     async execute(_callId, args) {
       return runAmbientCoverGenerate(api, args);
+    }
+  });
+
+  api.registerTool({
+    name: "ambient_video_publish",
+    description: "Generate an ambient video and upload it to YouTube in one call",
+    parameters: ambientVideoPublishInputSchema,
+    schema: ambientVideoPublishInputSchema,
+    async execute(_callId, args) {
+      return runAmbientVideoPublish(api, args);
     }
   });
 }

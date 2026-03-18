@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { registerAmbientTools } from "../../openclaw/index.js";
 
@@ -192,4 +194,66 @@ test("ambient_music_build writes a probeable wav when elevenlabs returns mp3 aud
   assert.equal(probe.streams[0].codec_type, "audio");
   assert.equal(Number(probe.streams[0].sample_rate), 48000);
   assert.equal(probe.streams[0].channels, 2);
+});
+
+test("ambient_music_build can fall back to ~/.openclaw config when local agent omits api.config", async () => {
+  const tools = [];
+  const mp3Bytes = createMp3Buffer(1);
+  const configDir = fs.mkdtempSync(path.join(os.tmpdir(), "ambient-openclaw-config-"));
+  const configPath = path.join(configDir, "openclaw.json");
+
+  fs.writeFileSync(
+    configPath,
+    JSON.stringify(
+      {
+        plugins: {
+          entries: {
+            "ambient-media-tools": {
+              enabled: true,
+              config: {
+                mode: "elevenlabs",
+                elevenLabsApiKey: "config-file-key"
+              }
+            }
+          }
+        }
+      },
+      null,
+      2
+    )
+  );
+
+  registerAmbientTools({
+    registerTool(tool) {
+      tools.push(tool);
+    },
+    config: {
+      configFilePath: configPath,
+      fetchImpl: async (url, options) => {
+        assert.equal(url, "https://api.elevenlabs.io/v1/music?output_format=mp3_44100_128");
+        assert.equal(options.headers["xi-api-key"], "config-file-key");
+        return {
+          ok: true,
+          status: 200,
+          async arrayBuffer() {
+            return mp3Bytes.buffer.slice(
+              mp3Bytes.byteOffset,
+              mp3Bytes.byteOffset + mp3Bytes.byteLength
+            );
+          }
+        };
+      }
+    }
+  });
+
+  const tool = tools.find((item) => item.name === "ambient_music_build");
+  const result = await tool.execute("call_5", {
+    theme_id: "sleep-piano",
+    duration_target_sec: 1800,
+    master_duration_sec: 1,
+    mode: "elevenlabs"
+  });
+
+  assert.equal(result.data.ok, true);
+  assert.match(result.data.master_audio_path, /master_audio\.wav$/);
 });

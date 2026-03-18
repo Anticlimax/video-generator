@@ -92,7 +92,7 @@ Standard one-shot generation with free-text theme/style:
 }
 ```
 
-Short smoke run with explicit master override:
+Short mock smoke run with explicit master override:
 
 ```json
 {
@@ -103,6 +103,20 @@ Short smoke run with explicit master override:
   "allow_nonstandard_duration": true,
   "mode": "mock",
   "output_name": "sleep-smoke"
+}
+```
+
+Real provider smoke should use at least `30s` for ElevenLabs music generation. Shorter durations such as `8s` are only appropriate for mock/local verification.
+
+```json
+{
+  "theme": "ocean",
+  "style": "calm piano, soft moonlight, low stimulation",
+  "duration_target_sec": 30,
+  "master_duration_sec": 30,
+  "allow_nonstandard_duration": true,
+  "mode": "elevenlabs",
+  "output_name": "ocean-real-smoke-30s"
 }
 ```
 

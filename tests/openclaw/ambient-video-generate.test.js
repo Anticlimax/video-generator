@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import { registerAmbientTools } from "../../openclaw/index.js";
 
@@ -151,7 +152,7 @@ test("ambient_video_generate can resolve free-text theme and style and render vi
 
   const tool = tools.find((item) => item.name === "ambient_video_generate");
   const result = await tool.execute("call_2", {
-    theme: "sleep",
+    theme: "ocean",
     style: "ocean piano",
     duration_target_sec: 8,
     master_duration_sec: 2,
@@ -161,10 +162,90 @@ test("ambient_video_generate can resolve free-text theme and style and render vi
   });
 
   assert.equal(result.data.ok, true);
-  assert.equal(result.data.theme_id, "sleep-piano");
+  assert.equal(result.data.theme_id, "meditation-ambient");
   assert.match(result.data.final_output_path, /ambient-video-generate-free-text\.mp4$/);
   const probe = probeJson(result.data.final_output_path);
   const streamKinds = probe.streams.map((stream) => stream.codec_type).sort();
   assert.deepEqual(streamKinds, ["audio", "video"]);
   assert.ok(Number(probe.format.duration) >= 7.5);
+});
+
+test("ambient_video_generate writes progress.json and reports stage events", async () => {
+  const tools = [];
+  const progressEvents = [];
+
+  registerAmbientTools({
+    registerTool(tool) {
+      tools.push(tool);
+    },
+    config: {
+      progressObserver(event) {
+        progressEvents.push({
+          stage: event.stage,
+          status: event.status,
+          progress: event.progress
+        });
+      },
+      coverGeneratorImpl: async ({ outputPath, prompt }) => {
+        const result = spawnSync(
+          "ffmpeg",
+          [
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=0x162033:s=1280x720:d=1",
+            "-frames:v",
+            "1",
+            outputPath
+          ],
+          { encoding: "utf8" }
+        );
+        assert.equal(result.status, 0, result.stderr);
+        return {
+          imagePath: outputPath,
+          prompt,
+          provider: "mock-cover"
+        };
+      }
+    }
+  });
+
+  const tool = tools.find((item) => item.name === "ambient_video_generate");
+  const result = await tool.execute("call_3", {
+    theme: "ocean",
+    style: "calm piano",
+    duration_target_sec: 8,
+    master_duration_sec: 2,
+    allow_nonstandard_duration: true,
+    output_name: "ambient-video-generate-progress",
+    mode: "mock"
+  });
+
+  assert.equal(result.data.ok, true);
+  assert.match(result.data.progress_path, /progress\.json$/);
+  assert.equal(fs.existsSync(result.data.progress_path), true);
+
+  const progressFile = JSON.parse(fs.readFileSync(result.data.progress_path, "utf8"));
+  assert.equal(progressFile.status, "done");
+  assert.equal(progressFile.stage, "completed");
+  assert.equal(progressFile.progress, 100);
+  assert.equal(progressFile.artifacts.final_output_path, result.data.final_output_path);
+  assert.equal(progressFile.theme, "ocean");
+  assert.equal(progressFile.style, "calm piano");
+
+  assert.deepEqual(
+    progressEvents.map((event) => event.stage),
+    [
+      "queued",
+      "theme_resolved",
+      "music_generating",
+      "music_ready",
+      "cover_generating",
+      "cover_ready",
+      "video_rendering",
+      "completed"
+    ]
+  );
+  assert.equal(progressEvents.at(-1)?.progress, 100);
 });
