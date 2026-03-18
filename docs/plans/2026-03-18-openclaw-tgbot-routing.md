@@ -102,11 +102,15 @@ Important fields:
 
 Telegram context to forward into tool args whenever available:
 
+- direct-message `sender_id` -> `telegram_chat_id`
 - `To=telegram:<chat_id>` or `From=telegram:<chat_id>` -> `telegram_chat_id`
-- `MessageSid` -> `telegram_message_id`
 - `MessageThreadId` -> `telegram_thread_id`
 
-Without these fields, the plugin can still generate media, but it cannot `edit` the Telegram progress message in place.
+Important:
+
+- do not treat inbound user `message_id` as the editable bot message id
+- once `telegram_chat_id` is available, the plugin should send its own placeholder progress message, capture the returned bot `messageId`, and then edit that message through the rest of the run
+- without `telegram_chat_id`, the plugin can still generate media, but it cannot update Telegram progress in place
 
 Recommended stage mapping:
 

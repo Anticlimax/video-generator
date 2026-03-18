@@ -16,8 +16,8 @@ test("ambient-video-maker skill doc describes tgbot natural language and slash-c
   assert.match(body, /不暴露/);
   assert.match(body, /theme_id/);
   assert.match(body, /ambient_video_generate/);
-  assert.match(body, /MessageSid/);
-  assert.match(body, /telegram_message_id/);
+  assert.match(body, /sender_id/);
+  assert.match(body, /telegram_chat_id/);
 });
 
 test("openclaw tgbot routing doc defines progress and completion messaging", () => {
@@ -32,6 +32,6 @@ test("openclaw tgbot routing doc defines progress and completion messaging", () 
   assert.match(body, /任务完成/);
   assert.match(body, /不暴露.*内部/i);
   assert.match(body, /不能出现重复扩展名/);
-  assert.match(body, /MessageSid/);
-  assert.match(body, /telegram_message_id/);
+  assert.match(body, /sender_id/);
+  assert.match(body, /messageId/);
 });

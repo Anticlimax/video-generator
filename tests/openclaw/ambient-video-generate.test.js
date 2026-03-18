@@ -307,6 +307,68 @@ test("ambient_video_generate relays progress updates when telegram context is pr
   assert.equal(relayEvents.at(-1)?.stage, "completed");
 });
 
+test("ambient_video_generate creates a telegram progress message when only chat id is provided", async () => {
+  const tools = [];
+  const relayEvents = [];
+  const startEvents = [];
+
+  registerAmbientTools({
+    registerTool(tool) {
+      tools.push(tool);
+    },
+    config: {
+      coverGeneratorImpl: async ({ outputPath, prompt }) => {
+        const result = spawnSync(
+          "ffmpeg",
+          [
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=0x162033:s=1280x720:d=1",
+            "-frames:v",
+            "1",
+            outputPath
+          ],
+          { encoding: "utf8" }
+        );
+        assert.equal(result.status, 0, result.stderr);
+        return {
+          imagePath: outputPath,
+          prompt,
+          provider: "mock-cover"
+        };
+      },
+      telegramProgressStartImpl: async (event) => {
+        startEvents.push(event);
+        return { messageId: "9001" };
+      },
+      telegramProgressRelayImpl: async (event) => {
+        relayEvents.push(event);
+      }
+    }
+  });
+
+  const tool = tools.find((item) => item.name === "ambient_video_generate");
+  const result = await tool.execute("call_telegram_start_1", {
+    theme: "ocean",
+    style: "calm piano",
+    duration_target_sec: 8,
+    master_duration_sec: 2,
+    allow_nonstandard_duration: true,
+    output_name: "ambient-video-generate-chat-only",
+    mode: "mock",
+    telegram_chat_id: "123456"
+  });
+
+  assert.equal(result.data.ok, true);
+  assert.equal(startEvents.length, 1);
+  assert.equal(startEvents[0].telegram_chat_id, "123456");
+  assert.equal(relayEvents.length > 0, true);
+  assert.equal(relayEvents[0].telegram_message_id, "9001");
+  assert.equal(relayEvents.at(-1)?.stage, "completed");
+});
+
 test("ambient_video_generate normalizes output names that already include .mp4", async () => {
   const tools = [];
 

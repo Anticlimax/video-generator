@@ -165,6 +165,91 @@ async function emitProgress(api, job, payload) {
   return progress;
 }
 
+function parseTelegramMessageSendResult(output) {
+  const trimmed = String(output || "").trim();
+  if (!trimmed) {
+    throw new Error("telegram_progress_send_empty_output");
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    const messageId =
+      parsed?.messageId ||
+      parsed?.message_id ||
+      parsed?.result?.messageId ||
+      parsed?.result?.message_id ||
+      parsed?.details?.messageId ||
+      parsed?.details?.message_id;
+    if (messageId != null && String(messageId).trim()) {
+      return String(messageId);
+    }
+  } catch {
+    // Fall back to regex parsing below.
+  }
+
+  const match = trimmed.match(/"messageId"\s*:\s*"?(?<id>[^"\s,}]+)"?/u);
+  if (match?.groups?.id) {
+    return String(match.groups.id);
+  }
+
+  throw new Error("telegram_progress_send_parse_failed");
+}
+
+async function ensureTelegramProgressTarget(api, seedProgress) {
+  const chatId = String(seedProgress.telegram_chat_id || "").trim();
+  const messageId = String(seedProgress.telegram_message_id || "").trim();
+  const threadId = String(seedProgress.telegram_thread_id || "").trim();
+
+  if (!chatId) {
+    return {
+      telegram_chat_id: "",
+      telegram_message_id: "",
+      telegram_thread_id: threadId
+    };
+  }
+
+  if (messageId) {
+    return {
+      telegram_chat_id: chatId,
+      telegram_message_id: messageId,
+      telegram_thread_id: threadId
+    };
+  }
+
+  const runtimeConfig = await resolveRuntimeConfig(api);
+  if (typeof runtimeConfig?.telegramProgressStartImpl === "function") {
+    const started = await runtimeConfig.telegramProgressStartImpl(seedProgress);
+    return {
+      telegram_chat_id: chatId,
+      telegram_message_id: String(started?.messageId || started?.message_id || "").trim(),
+      telegram_thread_id: threadId
+    };
+  }
+
+  const args = [
+    "message",
+    "send",
+    "--channel",
+    "telegram",
+    "--target",
+    chatId,
+    "--message",
+    renderTelegramProgressMessage(seedProgress),
+    "--json"
+  ];
+
+  if (threadId) {
+    args.push("--thread-id", threadId);
+  }
+
+  const { stdout } = await runCommandCapture("openclaw", args);
+  return {
+    telegram_chat_id: chatId,
+    telegram_message_id: parseTelegramMessageSendResult(stdout),
+    telegram_thread_id: threadId
+  };
+}
+
 async function relayTelegramProgress(runtimeConfig, progress) {
   const chatId = String(progress.telegram_chat_id || "").trim();
   const messageId = String(progress.telegram_message_id || "").trim();
@@ -756,7 +841,7 @@ async function runAmbientVideoGenerate(api, args) {
     cover_image_path: null,
     final_output_path: null
   };
-  await emitProgress(api, progressJob, {
+  const telegramTarget = await ensureTelegramProgressTarget(api, {
     stage: "queued",
     status: "running",
     progress: 0,
@@ -769,6 +854,18 @@ async function runAmbientVideoGenerate(api, args) {
     telegram_thread_id: args?.telegram_thread_id,
     artifacts: baseArtifacts
   });
+
+  await emitProgress(api, progressJob, {
+    stage: "queued",
+    status: "running",
+    progress: 0,
+    message: "任务已创建，等待开始处理",
+    theme: themeText,
+    style: styleText,
+    duration_target_sec: durationSec,
+    ...telegramTarget,
+    artifacts: baseArtifacts
+  });
   await emitProgress(api, progressJob, {
     stage: "theme_resolved",
     status: "running",
@@ -777,9 +874,7 @@ async function runAmbientVideoGenerate(api, args) {
     theme: themeText,
     style: styleText,
     duration_target_sec: durationSec,
-    telegram_chat_id: args?.telegram_chat_id,
-    telegram_message_id: args?.telegram_message_id,
-    telegram_thread_id: args?.telegram_thread_id,
+    ...telegramTarget,
     artifacts: baseArtifacts
   });
   await emitProgress(api, progressJob, {
@@ -790,9 +885,7 @@ async function runAmbientVideoGenerate(api, args) {
     theme: themeText,
     style: styleText,
     duration_target_sec: durationSec,
-    telegram_chat_id: args?.telegram_chat_id,
-    telegram_message_id: args?.telegram_message_id,
-    telegram_thread_id: args?.telegram_thread_id,
+    ...telegramTarget,
     artifacts: baseArtifacts
   });
 
@@ -818,9 +911,7 @@ async function runAmbientVideoGenerate(api, args) {
     theme: themeText,
     style: styleText,
     duration_target_sec: durationSec,
-    telegram_chat_id: args?.telegram_chat_id,
-    telegram_message_id: args?.telegram_message_id,
-    telegram_thread_id: args?.telegram_thread_id,
+    ...telegramTarget,
     artifacts: musicArtifacts
   });
 
@@ -833,9 +924,7 @@ async function runAmbientVideoGenerate(api, args) {
     theme: themeText,
     style: styleText,
     duration_target_sec: durationSec,
-    telegram_chat_id: args?.telegram_chat_id,
-    telegram_message_id: args?.telegram_message_id,
-    telegram_thread_id: args?.telegram_thread_id,
+    ...telegramTarget,
     artifacts: musicArtifacts
   });
   try {
@@ -860,9 +949,7 @@ async function runAmbientVideoGenerate(api, args) {
     theme: themeText,
     style: styleText,
     duration_target_sec: durationSec,
-    telegram_chat_id: args?.telegram_chat_id,
-    telegram_message_id: args?.telegram_message_id,
-    telegram_thread_id: args?.telegram_thread_id,
+    ...telegramTarget,
     artifacts: coverArtifacts
   });
 
@@ -874,9 +961,7 @@ async function runAmbientVideoGenerate(api, args) {
     theme: themeText,
     style: styleText,
     duration_target_sec: durationSec,
-    telegram_chat_id: args?.telegram_chat_id,
-    telegram_message_id: args?.telegram_message_id,
-    telegram_thread_id: args?.telegram_thread_id,
+    ...telegramTarget,
     artifacts: coverArtifacts
   });
 
@@ -899,9 +984,7 @@ async function runAmbientVideoGenerate(api, args) {
     theme: themeText,
     style: styleText,
     duration_target_sec: durationSec,
-    telegram_chat_id: args?.telegram_chat_id,
-    telegram_message_id: args?.telegram_message_id,
-    telegram_thread_id: args?.telegram_thread_id,
+    ...telegramTarget,
     artifacts: completedArtifacts
   });
 
@@ -930,7 +1013,7 @@ async function runAmbientVideoPublish(api, args) {
   const themeText = String(args?.theme || "").trim();
   const styleText = String(args?.style || "").trim();
 
-  await emitProgress(api, publishJob, {
+  const telegramTarget = await ensureTelegramProgressTarget(api, {
     stage: "queued",
     status: "running",
     progress: 0,
@@ -948,6 +1031,21 @@ async function runAmbientVideoPublish(api, args) {
   });
 
   await emitProgress(api, publishJob, {
+    stage: "queued",
+    status: "running",
+    progress: 0,
+    message: "发布任务已创建",
+    theme: themeText,
+    style: styleText,
+    duration_target_sec: Number(args?.duration_target_sec || 0),
+    ...telegramTarget,
+    artifacts: {
+      final_output_path: null,
+      youtube_url: null
+    }
+  });
+
+  await emitProgress(api, publishJob, {
     stage: "video_generating",
     status: "running",
     progress: 35,
@@ -955,9 +1053,7 @@ async function runAmbientVideoPublish(api, args) {
     theme: themeText,
     style: styleText,
     duration_target_sec: Number(args?.duration_target_sec || 0),
-    telegram_chat_id: args?.telegram_chat_id,
-    telegram_message_id: args?.telegram_message_id,
-    telegram_thread_id: args?.telegram_thread_id,
+    ...telegramTarget,
     artifacts: {
       final_output_path: null,
       youtube_url: null
@@ -972,7 +1068,10 @@ async function runAmbientVideoPublish(api, args) {
         progressObserver: undefined
       }
     },
-    args
+    {
+      ...args,
+      ...telegramTarget
+    }
   );
   const finalOutputPath = videoResult.data.final_output_path;
 
@@ -984,9 +1083,7 @@ async function runAmbientVideoPublish(api, args) {
     theme: themeText,
     style: styleText,
     duration_target_sec: Number(args?.duration_target_sec || 0),
-    telegram_chat_id: args?.telegram_chat_id,
-    telegram_message_id: args?.telegram_message_id,
-    telegram_thread_id: args?.telegram_thread_id,
+    ...telegramTarget,
     artifacts: {
       final_output_path: finalOutputPath,
       youtube_url: null
@@ -1016,9 +1113,7 @@ async function runAmbientVideoPublish(api, args) {
     theme: themeText,
     style: styleText,
     duration_target_sec: Number(args?.duration_target_sec || 0),
-    telegram_chat_id: args?.telegram_chat_id,
-    telegram_message_id: args?.telegram_message_id,
-    telegram_thread_id: args?.telegram_thread_id,
+    ...telegramTarget,
     artifacts: {
       final_output_path: finalOutputPath,
       youtube_url: uploadResult.url

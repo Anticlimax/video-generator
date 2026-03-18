@@ -14,10 +14,11 @@ This skill is designed to work behind OpenClaw when a linked `tgbot` forwards Te
 - 对完整 slash command 直接执行，不先追问
 - 不暴露内部 tool、内部参数、`theme_id`、fallback 或实现细节
 - 对 Telegram 入站消息，优先从标准上下文字段中提取并透传：
-  - `To` / `From` 中的 `telegram:<chat_id>`
-  - `MessageSid` 作为 `telegram_message_id`
-  - `MessageThreadId` 作为 `telegram_thread_id`
-  - 调用 `ambient_video_generate` / `ambient_video_publish` 时，能拿到这些字段就必须传入 tool args
+  - DM 场景优先用 `Conversation info` 里的 `sender_id` 作为 `telegram_chat_id`
+  - 如果存在 `To` / `From=telegram:<chat_id>`，也可直接提取为 `telegram_chat_id`
+  - 如果存在 `MessageThreadId`，提取为 `telegram_thread_id`
+  - 不要把入站用户消息的 `message_id` 当成可编辑的 bot message id
+  - 调用 `ambient_video_generate` / `ambient_video_publish` 时，能拿到 `telegram_chat_id` 就必须传入 tool args；plugin 会自己创建可编辑的进度消息
 
 ## Prompts / Intent Signals
 
@@ -34,7 +35,7 @@ The skill maps aliases and keywords defined in each theme config (`sleep-piano`,
 2. If the message matches `/ambient <theme> | <style> | <duration>`, call `ambient_video_generate` and 直接执行.
 3. If the message matches `/ambient_publish <theme> | <style> | <duration>`, call `ambient_video_publish` and 直接执行.
 4. For natural language, call `ambient_video_generate` as the default path only when `theme`, `style`, and `duration_target_sec` are clear enough; otherwise ask a clarification question first.
-5. For Telegram sessions, map `To=telegram:<chat_id>` or `From=telegram:<chat_id>` to `telegram_chat_id`, map `MessageSid` to `telegram_message_id`, and map `MessageThreadId` to `telegram_thread_id` whenever present.
+5. For Telegram sessions, map direct-message `sender_id` to `telegram_chat_id`; if `To=telegram:<chat_id>` or `From=telegram:<chat_id>` is present, that also works. Map `MessageThreadId` to `telegram_thread_id` whenever present. Do not reuse inbound user `message_id` as the edit target.
 6. Let the plugin resolve the free text to an internal canonical theme family, generate music, generate a static cover image, and render the final MP4.
 7. Return the final output path, resolved internal theme family, theme/version, master duration, and render summary from the one-shot tool.
 8. If the one-shot path fails, use the fallback / 回退 path with `ambient_cover_generate` or `ambient_music_build + ambient_media_render` so the operator can isolate whether the problem is in image generation, music generation, or media rendering.
