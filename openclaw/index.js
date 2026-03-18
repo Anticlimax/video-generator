@@ -357,9 +357,21 @@ const ambientVideoGenerateInputSchema = {
     mode: { type: "string", enum: ["mock", "elevenlabs", "infsh"] },
     video_template_id: { type: "string" },
     output_name: { type: "string" },
-    telegram_chat_id: { type: "string" },
-    telegram_message_id: { type: "string" },
-    telegram_thread_id: { type: "string" }
+    telegram_chat_id: {
+      type: "string",
+      description:
+        "Telegram chat id for progress updates. In Telegram direct-message sessions, extract this from Conversation info sender_id or Sender.id and pass it whenever available."
+    },
+    telegram_message_id: {
+      type: "string",
+      description:
+        "Editable Telegram bot message id for progress updates if one already exists. Do not pass the inbound user message_id here."
+    },
+    telegram_thread_id: {
+      type: "string",
+      description:
+        "Optional Telegram thread id. If MessageThreadId is present in inbound metadata, forward it here."
+    }
   },
 };
 
@@ -388,9 +400,21 @@ const ambientVideoPublishInputSchema = {
     mode: { type: "string", enum: ["mock", "elevenlabs", "infsh"] },
     video_template_id: { type: "string" },
     output_name: { type: "string" },
-    telegram_chat_id: { type: "string" },
-    telegram_message_id: { type: "string" },
-    telegram_thread_id: { type: "string" },
+    telegram_chat_id: {
+      type: "string",
+      description:
+        "Telegram chat id for progress updates. In Telegram direct-message sessions, extract this from Conversation info sender_id or Sender.id and pass it whenever available."
+    },
+    telegram_message_id: {
+      type: "string",
+      description:
+        "Editable Telegram bot message id for progress updates if one already exists. Do not pass the inbound user message_id here."
+    },
+    telegram_thread_id: {
+      type: "string",
+      description:
+        "Optional Telegram thread id. If MessageThreadId is present in inbound metadata, forward it here."
+    },
     youtube_title: { type: "string" },
     youtube_description: { type: "string" },
     youtube_tags: {
@@ -1158,7 +1182,8 @@ export function registerAmbientTools(api) {
 
   api.registerTool({
     name: "ambient_video_generate",
-    description: "Build ambient music and render the final ambient video in one call",
+    description:
+      "Build ambient music and render the final ambient video in one call. In Telegram sessions, extract sender_id from Conversation info or Sender metadata and pass it as telegram_chat_id so the plugin can create and edit progress messages.",
     parameters: ambientVideoGenerateInputSchema,
     schema: ambientVideoGenerateInputSchema,
     async execute(_callId, args) {
@@ -1178,7 +1203,8 @@ export function registerAmbientTools(api) {
 
   api.registerTool({
     name: "ambient_video_publish",
-    description: "Generate an ambient video and upload it to YouTube in one call",
+    description:
+      "Generate an ambient video and upload it to YouTube in one call. In Telegram sessions, extract sender_id from Conversation info or Sender metadata and pass it as telegram_chat_id so the plugin can create and edit progress messages.",
     parameters: ambientVideoPublishInputSchema,
     schema: ambientVideoPublishInputSchema,
     async execute(_callId, args) {

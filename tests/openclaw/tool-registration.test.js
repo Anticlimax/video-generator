@@ -33,9 +33,18 @@ test("registerAmbientTools registers ambient_music_build and ambient_media_rende
   assert.equal(Array.isArray(videoTool.parameters.required), false);
   assert.equal(videoTool.parameters.properties.theme?.type, "string");
   assert.equal(videoTool.parameters.properties.style?.type, "string");
+  assert.match(videoTool.description, /Telegram/u);
+  assert.match(videoTool.description, /sender_id/u);
+  assert.match(videoTool.description, /telegram_chat_id/u);
+  assert.match(
+    videoTool.parameters.properties.telegram_chat_id?.description || "",
+    /sender_id/u
+  );
 
   const publishTool = tools.find((tool) => tool.name === "ambient_video_publish");
   assert.ok(publishTool);
   assert.equal(publishTool.parameters.properties.youtube_title?.type, "string");
   assert.equal(publishTool.parameters.properties.privacy_status?.type, "string");
+  assert.match(publishTool.description, /Telegram/u);
+  assert.match(publishTool.description, /telegram_chat_id/u);
 });
