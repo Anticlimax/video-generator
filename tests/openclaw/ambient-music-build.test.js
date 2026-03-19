@@ -516,6 +516,89 @@ test("ambient_music_build prefers MusicGPT conversion ids and conversion_path_wa
   assert.equal(probe.format.format_name, "wav");
 });
 
+test("ambient_music_build writes MusicGPT diagnostics into the job directory", async () => {
+  const tools = [];
+  const mp3Bytes = createMp3Buffer(1);
+
+  registerAmbientTools({
+    registerTool(tool) {
+      tools.push(tool);
+    },
+    config: {
+      musicGptApiKey: "musicgpt-key",
+      fetchImpl: async (url) => {
+        if (url === "https://api.musicgpt.com/api/public/v1/MusicAI") {
+          return {
+            ok: true,
+            status: 200,
+            async json() {
+              return {
+                success: true,
+                task_id: "task-diag",
+                conversion_id_1: "conv-diag"
+              };
+            }
+          };
+        }
+
+        if (url === "https://api.musicgpt.com/api/public/v1/byId?conversionType=MUSIC_AI&conversion_id=conv-diag") {
+          return {
+            ok: true,
+            status: 200,
+            async json() {
+              return {
+                success: true,
+                conversion: {
+                  status: "completed",
+                  conversion_path: "https://files.musicgpt.test/diag.mp3"
+                }
+              };
+            }
+          };
+        }
+
+        if (url === "https://files.musicgpt.test/diag.mp3") {
+          return {
+            ok: true,
+            status: 200,
+            async arrayBuffer() {
+              return mp3Bytes.buffer.slice(
+                mp3Bytes.byteOffset,
+                mp3Bytes.byteOffset + mp3Bytes.byteLength
+              );
+            }
+          };
+        }
+
+        throw new Error(`unexpected_fetch_${url}`);
+      },
+      sleepImpl: async () => {}
+    }
+  });
+
+  const tool = tools.find((item) => item.name === "ambient_music_build");
+  const result = await tool.execute("call-9", {
+    theme_id: "sleep-piano",
+    duration_target_sec: 30,
+    master_duration_sec: 1,
+    allow_nonstandard_duration: true,
+    mode: "musicgpt"
+  });
+
+  const jobDir = path.dirname(result.data.master_audio_path);
+  const startPayload = JSON.parse(
+    fs.readFileSync(path.join(jobDir, "musicgpt-start.json"), "utf8")
+  );
+  const statusPayload = JSON.parse(
+    fs.readFileSync(path.join(jobDir, "musicgpt-status-conv-diag.json"), "utf8")
+  );
+
+  assert.equal(startPayload.task_id, "task-diag");
+  assert.equal(startPayload.conversion_id_1, "conv-diag");
+  assert.equal(statusPayload.conversion.status, "completed");
+  assert.equal(statusPayload.conversion.conversion_path, "https://files.musicgpt.test/diag.mp3");
+});
+
 test("ambient_music_build times out MusicGPT start requests instead of hanging forever", async () => {
   const tools = [];
 

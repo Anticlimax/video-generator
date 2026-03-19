@@ -40,6 +40,11 @@ async function writeBinaryFile(filePath, contents) {
   await fs.writeFile(filePath, contents);
 }
 
+async function writeJsonFile(filePath, value) {
+  await ensureParentDir(filePath);
+  await fs.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
 async function statSize(filePath) {
   const stats = await fs.stat(filePath);
   return stats.size;
@@ -823,6 +828,7 @@ async function runAmbientMusicBuild(api, args) {
     }
 
     const startPayload = await startResponse.json();
+    await writeJsonFile(path.join(job.jobDir, "musicgpt-start.json"), startPayload);
     const taskId = String(startPayload?.task_id || startPayload?.taskId || "").trim();
     if (!taskId) {
       throw new Error("musicgpt_task_id_missing");
@@ -863,6 +869,11 @@ async function runAmbientMusicBuild(api, args) {
         }
 
         const statusPayload = await statusResponse.json();
+        const statusSuffix = lookupTarget.conversionId || lookupTarget.taskId || "unknown";
+        await writeJsonFile(
+          path.join(job.jobDir, `musicgpt-status-${statusSuffix}.json`),
+          statusPayload
+        );
         audioUrl = readMusicGptAudioUrl(statusPayload);
 
         if (audioUrl && isMusicGptCompleted(statusPayload)) {
