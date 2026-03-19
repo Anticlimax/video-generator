@@ -106,7 +106,17 @@ function createMusicGptProviderWithKey({ musicGptApiKey }) {
         }
       };
     },
-    prepareStatusRequest({ taskId }) {
+    prepareStatusRequest({ taskId, conversionId }) {
+      if (conversionId) {
+        return {
+          method: "GET",
+          url: `https://api.musicgpt.com/api/public/v1/byId?conversionType=MUSIC_AI&conversion_id=${encodeURIComponent(conversionId)}`,
+          headers: {
+            Authorization: musicGptApiKey
+          }
+        };
+      }
+
       return {
         method: "GET",
         url: `https://api.musicgpt.com/api/public/v1/byId?conversionType=MUSIC_AI&task_id=${encodeURIComponent(taskId)}`,

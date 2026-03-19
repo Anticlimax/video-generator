@@ -532,6 +532,18 @@ async function fetchWithTimeout(fetchImpl, url, options, timeoutMs, timeoutLabel
 
 function readMusicGptAudioUrl(payload) {
   return (
+    payload?.conversion_path_wav ||
+    payload?.result?.conversion_path_wav ||
+    payload?.data?.conversion_path_wav ||
+    payload?.conversion?.conversion_path_wav ||
+    payload?.result?.conversion?.conversion_path_wav ||
+    payload?.data?.conversion?.conversion_path_wav ||
+    payload?.conversion_path ||
+    payload?.result?.conversion_path ||
+    payload?.data?.conversion_path ||
+    payload?.conversion?.conversion_path ||
+    payload?.result?.conversion?.conversion_path ||
+    payload?.data?.conversion?.conversion_path ||
     payload?.audio_url ||
     payload?.result?.audio_url ||
     payload?.data?.audio_url ||
@@ -815,37 +827,55 @@ async function runAmbientMusicBuild(api, args) {
     if (!taskId) {
       throw new Error("musicgpt_task_id_missing");
     }
+    const conversionIds = [
+      startPayload?.conversion_id_1,
+      startPayload?.conversion_id_2,
+      startPayload?.conversionId1,
+      startPayload?.conversionId2
+    ]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean);
 
     const sleepImpl = runtimeConfig?.sleepImpl || sleep;
     const deadline = Date.now() + provider.timeoutSec * 1000;
     let audioUrl = null;
 
     while (Date.now() < deadline) {
-      const statusRequest = provider.prepareStatusRequest({ taskId });
-      const statusResponse = await fetchWithTimeout(
-        fetchImpl,
-        statusRequest.url,
-        {
-          method: statusRequest.method,
-          headers: statusRequest.headers
-        },
-        musicRequestTimeoutMs,
-        "musicgpt_status_timeout"
-      );
+      const lookupTargets = conversionIds.length > 0
+        ? conversionIds.map((conversionId) => ({ conversionId }))
+        : [{ taskId }];
 
-      if (!statusResponse.ok) {
-        throw new Error(`musicgpt_status_failed_${statusResponse.status}`);
+      for (const lookupTarget of lookupTargets) {
+        const statusRequest = provider.prepareStatusRequest(lookupTarget);
+        const statusResponse = await fetchWithTimeout(
+          fetchImpl,
+          statusRequest.url,
+          {
+            method: statusRequest.method,
+            headers: statusRequest.headers
+          },
+          musicRequestTimeoutMs,
+          "musicgpt_status_timeout"
+        );
+
+        if (!statusResponse.ok) {
+          throw new Error(`musicgpt_status_failed_${statusResponse.status}`);
+        }
+
+        const statusPayload = await statusResponse.json();
+        audioUrl = readMusicGptAudioUrl(statusPayload);
+
+        if (audioUrl && isMusicGptCompleted(statusPayload)) {
+          break;
+        }
+
+        if (isMusicGptFailed(statusPayload)) {
+          throw new Error("musicgpt_generation_failed");
+        }
       }
 
-      const statusPayload = await statusResponse.json();
-      audioUrl = readMusicGptAudioUrl(statusPayload);
-
-      if (audioUrl && isMusicGptCompleted(statusPayload)) {
+      if (audioUrl) {
         break;
-      }
-
-      if (isMusicGptFailed(statusPayload)) {
-        throw new Error("musicgpt_generation_failed");
       }
 
       await sleepImpl(1000);

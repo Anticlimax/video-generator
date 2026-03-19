@@ -415,6 +415,107 @@ test("ambient_music_build accepts MusicGPT completion nested under conversion", 
   assert.equal(probe.format.format_name, "wav");
 });
 
+test("ambient_music_build prefers MusicGPT conversion ids and conversion_path_wav", async () => {
+  const tools = [];
+  const wavBytes = spawnSync(
+    "ffmpeg",
+    [
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=220:duration=1",
+      "-ar",
+      "48000",
+      "-ac",
+      "2",
+      "-f",
+      "wav",
+      "pipe:1"
+    ],
+    { encoding: null }
+  ).stdout;
+  const seenUrls = [];
+
+  registerAmbientTools({
+    registerTool(tool) {
+      tools.push(tool);
+    },
+    config: {
+      musicGptApiKey: "musicgpt-key",
+      fetchImpl: async (url) => {
+        seenUrls.push(url);
+
+        if (url === "https://api.musicgpt.com/api/public/v1/MusicAI") {
+          return {
+            ok: true,
+            status: 200,
+            async json() {
+              return {
+                success: true,
+                task_id: "task-v1",
+                conversion_id_1: "conv-a",
+                conversion_id_2: "conv-b"
+              };
+            }
+          };
+        }
+
+        if (url === "https://api.musicgpt.com/api/public/v1/byId?conversionType=MUSIC_AI&conversion_id=conv-a") {
+          return {
+            ok: true,
+            status: 200,
+            async json() {
+              return {
+                success: true,
+                conversion: {
+                  status: "completed",
+                  conversion_path_wav: "https://files.musicgpt.test/conv-a.wav"
+                }
+              };
+            }
+          };
+        }
+
+        if (url === "https://files.musicgpt.test/conv-a.wav") {
+          return {
+            ok: true,
+            status: 200,
+            async arrayBuffer() {
+              return wavBytes.buffer.slice(
+                wavBytes.byteOffset,
+                wavBytes.byteOffset + wavBytes.byteLength
+              );
+            }
+          };
+        }
+
+        throw new Error(`unexpected_fetch_${url}`);
+      },
+      sleepImpl: async () => {}
+    }
+  });
+
+  const tool = tools.find((item) => item.name === "ambient_music_build");
+  const result = await tool.execute("call_8", {
+    theme_id: "sleep-piano",
+    duration_target_sec: 30,
+    master_duration_sec: 1,
+    allow_nonstandard_duration: true,
+    mode: "musicgpt"
+  });
+
+  assert.equal(result.data.ok, true);
+  assert.deepEqual(seenUrls, [
+    "https://api.musicgpt.com/api/public/v1/MusicAI",
+    "https://api.musicgpt.com/api/public/v1/byId?conversionType=MUSIC_AI&conversion_id=conv-a",
+    "https://files.musicgpt.test/conv-a.wav"
+  ]);
+
+  const probe = probeJson(result.data.master_audio_path);
+  assert.equal(probe.format.format_name, "wav");
+});
+
 test("ambient_music_build times out MusicGPT start requests instead of hanging forever", async () => {
   const tools = [];
 

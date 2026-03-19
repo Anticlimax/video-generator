@@ -85,6 +85,9 @@ test("musicgpt provider requires an api key and builds async start/status reques
   const statusRequest = provider.prepareStatusRequest({
     taskId: "task-123"
   });
+  const conversionStatusRequest = provider.prepareStatusRequest({
+    conversionId: "conv-456"
+  });
 
   assert.equal(provider.name, "musicgpt");
   assert.equal(startRequest.method, "POST");
@@ -100,6 +103,10 @@ test("musicgpt provider requires an api key and builds async start/status reques
     "https://api.musicgpt.com/api/public/v1/byId?conversionType=MUSIC_AI&task_id=task-123"
   );
   assert.equal(statusRequest.headers.Authorization, "musicgpt-key");
+  assert.equal(
+    conversionStatusRequest.url,
+    "https://api.musicgpt.com/api/public/v1/byId?conversionType=MUSIC_AI&conversion_id=conv-456"
+  );
 });
 
 test("musicgpt provider rejects missing api key", () => {
