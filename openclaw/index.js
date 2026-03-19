@@ -326,13 +326,14 @@ const ambientMusicBuildInputSchema = {
   additionalProperties: false,
   properties: {
     theme_id: { type: "string" },
+    theme: { type: "string" },
+    style: { type: "string" },
     duration_target_sec: { type: "number" },
     master_duration_sec: { type: "number" },
     allow_nonstandard_duration: { type: "boolean" },
     seed: { type: "string" },
     mode: { type: "string", enum: ["mock", "elevenlabs", "musicgpt", "infsh"] }
-  },
-  required: ["theme_id"]
+  }
 };
 
 const ambientMediaRenderInputSchema = {
@@ -535,7 +536,44 @@ async function fetchWithTimeout(fetchImpl, url, options, timeoutMs, timeoutLabel
   }
 }
 
-function readMusicGptAudioUrl(payload) {
+function readMusicGptAudioUrl(payload, conversionId = "") {
+  const normalizedConversionId = String(conversionId || "").trim();
+  const conversionPayload =
+    payload?.conversion || payload?.result?.conversion || payload?.data?.conversion || null;
+
+  if (normalizedConversionId && conversionPayload) {
+    const conversionId1 = String(
+      conversionPayload?.conversion_id_1 ||
+        payload?.conversion_id_1 ||
+        payload?.result?.conversion_id_1 ||
+        payload?.data?.conversion_id_1 ||
+        ""
+    ).trim();
+    const conversionId2 = String(
+      conversionPayload?.conversion_id_2 ||
+        payload?.conversion_id_2 ||
+        payload?.result?.conversion_id_2 ||
+        payload?.data?.conversion_id_2 ||
+        ""
+    ).trim();
+
+    if (normalizedConversionId === conversionId1) {
+      return (
+        conversionPayload?.conversion_path_wav_1 ||
+        conversionPayload?.conversion_path_1 ||
+        null
+      );
+    }
+
+    if (normalizedConversionId === conversionId2) {
+      return (
+        conversionPayload?.conversion_path_wav_2 ||
+        conversionPayload?.conversion_path_2 ||
+        null
+      );
+    }
+  }
+
   return (
     payload?.conversion_path_wav ||
     payload?.result?.conversion_path_wav ||
@@ -874,7 +912,7 @@ async function runAmbientMusicBuild(api, args) {
           path.join(job.jobDir, `musicgpt-status-${statusSuffix}.json`),
           statusPayload
         );
-        audioUrl = readMusicGptAudioUrl(statusPayload);
+        audioUrl = readMusicGptAudioUrl(statusPayload, lookupTarget.conversionId);
 
         if (audioUrl && isMusicGptCompleted(statusPayload)) {
           break;

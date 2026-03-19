@@ -47,4 +47,10 @@ test("registerAmbientTools registers ambient_music_build and ambient_media_rende
   assert.equal(publishTool.parameters.properties.privacy_status?.type, "string");
   assert.match(publishTool.description, /Telegram/u);
   assert.match(publishTool.description, /telegram_chat_id/u);
+
+  const musicTool = tools.find((tool) => tool.name === "ambient_music_build");
+  assert.ok(musicTool);
+  assert.equal(Array.isArray(musicTool.parameters.required), false);
+  assert.equal(musicTool.parameters.properties.theme?.type, "string");
+  assert.equal(musicTool.parameters.properties.style?.type, "string");
 });
