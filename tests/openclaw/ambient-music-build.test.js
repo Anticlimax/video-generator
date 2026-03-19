@@ -341,3 +341,114 @@ test("ambient_music_build polls MusicGPT and writes a probeable wav", async () =
   assert.equal(Number(probe.streams[0].sample_rate), 48000);
   assert.equal(probe.streams[0].channels, 2);
 });
+
+test("ambient_music_build accepts MusicGPT completion nested under conversion", async () => {
+  const tools = [];
+  const mp3Bytes = createMp3Buffer(2);
+
+  registerAmbientTools({
+    registerTool(tool) {
+      tools.push(tool);
+    },
+    config: {
+      musicGptApiKey: "musicgpt-key",
+      fetchImpl: async (url, options = {}) => {
+        if (url === "https://api.musicgpt.com/api/public/v1/MusicAI") {
+          return {
+            ok: true,
+            status: 200,
+            async json() {
+              return {
+                success: true,
+                task_id: "task-456"
+              };
+            }
+          };
+        }
+
+        if (url === "https://api.musicgpt.com/api/public/v1/byId?conversionType=MUSIC_AI&task_id=task-456") {
+          return {
+            ok: true,
+            status: 200,
+            async json() {
+              return {
+                success: true,
+                conversion: {
+                  status: "completed",
+                  audio_url: "https://files.musicgpt.test/master-conversion.mp3"
+                }
+              };
+            }
+          };
+        }
+
+        if (url === "https://files.musicgpt.test/master-conversion.mp3") {
+          return {
+            ok: true,
+            status: 200,
+            async arrayBuffer() {
+              return mp3Bytes.buffer.slice(
+                mp3Bytes.byteOffset,
+                mp3Bytes.byteOffset + mp3Bytes.byteLength
+              );
+            }
+          };
+        }
+
+        throw new Error(`unexpected_fetch_${url}_${options.method || "GET"}`);
+      },
+      sleepImpl: async () => {}
+    }
+  });
+
+  const tool = tools.find((item) => item.name === "ambient_music_build");
+  const result = await tool.execute("call_7", {
+    theme_id: "sleep-piano",
+    duration_target_sec: 30,
+    master_duration_sec: 2,
+    allow_nonstandard_duration: true,
+    mode: "musicgpt"
+  });
+
+  assert.equal(result.data.ok, true);
+  const probe = probeJson(result.data.master_audio_path);
+  assert.equal(probe.format.format_name, "wav");
+});
+
+test("ambient_music_build times out MusicGPT start requests instead of hanging forever", async () => {
+  const tools = [];
+
+  registerAmbientTools({
+    registerTool(tool) {
+      tools.push(tool);
+    },
+    config: {
+      musicGptApiKey: "musicgpt-key",
+      musicGptRequestTimeoutSec: 1,
+      fetchImpl: async (_url, options = {}) =>
+        new Promise((_, reject) => {
+          if (options.signal) {
+            options.signal.addEventListener(
+              "abort",
+              () => {
+                reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+              },
+              { once: true }
+            );
+          }
+        }),
+      sleepImpl: async () => {}
+    }
+  });
+
+  const tool = tools.find((item) => item.name === "ambient_music_build");
+  await assert.rejects(
+    tool.execute("call-timeout", {
+      theme_id: "sleep-piano",
+      duration_target_sec: 1800,
+      master_duration_sec: 30,
+      mode: "musicgpt"
+    }),
+    /musicgpt_start_timeout/
+  );
+});

@@ -505,15 +505,45 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function fetchWithTimeout(fetchImpl, url, options, timeoutMs, timeoutLabel) {
+  const normalizedTimeoutMs = Math.max(1, Number(timeoutMs) || 0);
+  const controller = typeof AbortController === "function" ? new AbortController() : null;
+  const timer = controller
+    ? setTimeout(() => controller.abort(new Error(timeoutLabel)), normalizedTimeoutMs)
+    : null;
+
+  try {
+    const response = await fetchImpl(url, {
+      ...options,
+      signal: controller?.signal
+    });
+    return response;
+  } catch (error) {
+    if (error?.name === "AbortError" || error?.message === timeoutLabel) {
+      throw new Error(timeoutLabel);
+    }
+    throw error;
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
+}
+
 function readMusicGptAudioUrl(payload) {
   return (
     payload?.audio_url ||
     payload?.result?.audio_url ||
     payload?.data?.audio_url ||
     payload?.conversion?.audio_url ||
+    payload?.result?.conversion?.audio_url ||
+    payload?.data?.conversion?.audio_url ||
     payload?.audioUrl ||
     payload?.result?.audioUrl ||
     payload?.data?.audioUrl ||
+    payload?.conversion?.audioUrl ||
+    payload?.result?.conversion?.audioUrl ||
+    payload?.data?.conversion?.audioUrl ||
     null
   );
 }
@@ -524,6 +554,8 @@ function isMusicGptCompleted(payload) {
       payload?.result?.status ||
       payload?.data?.status ||
       payload?.conversion?.status ||
+      payload?.result?.conversion?.status ||
+      payload?.data?.conversion?.status ||
       ""
   )
     .trim()
@@ -537,6 +569,8 @@ function isMusicGptFailed(payload) {
       payload?.result?.status ||
       payload?.data?.status ||
       payload?.conversion?.status ||
+      payload?.result?.conversion?.status ||
+      payload?.data?.conversion?.status ||
       ""
   )
     .trim()
@@ -681,6 +715,7 @@ async function runAmbientMusicBuild(api, args) {
     elevenLabsApiKey: runtimeConfig?.elevenLabsApiKey,
     musicGptApiKey: runtimeConfig?.musicGptApiKey
   });
+  const musicRequestTimeoutMs = Number(provider.requestTimeoutSec || 30) * 1000;
   const job = await createJobWorkspace();
   const prompt = buildMusicPrompt({
     themeId: theme?.id || null,
@@ -759,11 +794,17 @@ async function runAmbientMusicBuild(api, args) {
       style: String(args?.style || "").trim() || theme?.music_style || "",
       durationSec: masterDurationSec
     });
-    const startResponse = await fetchImpl(startRequest.url, {
-      method: startRequest.method,
-      headers: startRequest.headers,
-      body: JSON.stringify(startRequest.body)
-    });
+    const startResponse = await fetchWithTimeout(
+      fetchImpl,
+      startRequest.url,
+      {
+        method: startRequest.method,
+        headers: startRequest.headers,
+        body: JSON.stringify(startRequest.body)
+      },
+      musicRequestTimeoutMs,
+      "musicgpt_start_timeout"
+    );
 
     if (!startResponse.ok) {
       throw new Error(`musicgpt_request_failed_${startResponse.status}`);
@@ -781,10 +822,16 @@ async function runAmbientMusicBuild(api, args) {
 
     while (Date.now() < deadline) {
       const statusRequest = provider.prepareStatusRequest({ taskId });
-      const statusResponse = await fetchImpl(statusRequest.url, {
-        method: statusRequest.method,
-        headers: statusRequest.headers
-      });
+      const statusResponse = await fetchWithTimeout(
+        fetchImpl,
+        statusRequest.url,
+        {
+          method: statusRequest.method,
+          headers: statusRequest.headers
+        },
+        musicRequestTimeoutMs,
+        "musicgpt_status_timeout"
+      );
 
       if (!statusResponse.ok) {
         throw new Error(`musicgpt_status_failed_${statusResponse.status}`);
@@ -808,9 +855,15 @@ async function runAmbientMusicBuild(api, args) {
       throw new Error("musicgpt_generation_timeout");
     }
 
-    const downloadResponse = await fetchImpl(audioUrl, {
-      method: "GET"
-    });
+    const downloadResponse = await fetchWithTimeout(
+      fetchImpl,
+      audioUrl,
+      {
+        method: "GET"
+      },
+      musicRequestTimeoutMs,
+      "musicgpt_download_timeout"
+    );
 
     if (!downloadResponse.ok) {
       throw new Error(`musicgpt_download_failed_${downloadResponse.status}`);

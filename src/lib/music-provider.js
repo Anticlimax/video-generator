@@ -86,6 +86,7 @@ function createMusicGptProviderWithKey({ musicGptApiKey }) {
   return {
     name: "musicgpt",
     timeoutSec: 180,
+    requestTimeoutSec: 30,
     maxRetries: 1,
     prepareRequest({ prompt, style }) {
       const trimmedPrompt = String(prompt || "").trim().slice(0, 280);
