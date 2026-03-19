@@ -1,3 +1,5 @@
+import JobForm from "../components/job-form";
+
 export default function HomePage() {
   return (
     <main className="shell">
@@ -9,21 +11,7 @@ export default function HomePage() {
           video in one place.
         </p>
 
-        <form className="card form">
-          <label>
-            Theme
-            <input name="theme" placeholder="storm city" />
-          </label>
-          <label>
-            Style
-            <input name="style" placeholder="cinematic storm ambience" />
-          </label>
-          <label>
-            Duration
-            <input name="duration" placeholder="30m" />
-          </label>
-          <button type="submit">Generate</button>
-        </form>
+        <JobForm />
       </section>
     </main>
   );
