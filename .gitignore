@@ -1,4 +1,4 @@
 node_modules/
-jobs/
-outputs/
+/jobs/
+/outputs/
 .DS_Store
