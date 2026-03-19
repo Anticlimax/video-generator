@@ -108,6 +108,7 @@ Telegram context to forward into tool args whenever available:
 
 Important:
 
+- if Telegram metadata already includes `sender_id` or `Sender.id`, `telegram_chat_id` is mandatory in tool args
 - do not treat inbound user `message_id` as the editable bot message id
 - once `telegram_chat_id` is available, the plugin should send its own placeholder progress message, capture the returned bot `messageId`, and then edit that message through the rest of the run
 - without `telegram_chat_id`, the plugin can still generate media, but it cannot update Telegram progress in place

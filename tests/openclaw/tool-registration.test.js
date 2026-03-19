@@ -36,6 +36,7 @@ test("registerAmbientTools registers ambient_music_build and ambient_media_rende
   assert.match(videoTool.description, /Telegram/u);
   assert.match(videoTool.description, /sender_id/u);
   assert.match(videoTool.description, /telegram_chat_id/u);
+  assert.match(videoTool.description, /MUST/u);
   assert.match(
     videoTool.parameters.properties.telegram_chat_id?.description || "",
     /sender_id/u
@@ -47,6 +48,7 @@ test("registerAmbientTools registers ambient_music_build and ambient_media_rende
   assert.equal(publishTool.parameters.properties.privacy_status?.type, "string");
   assert.match(publishTool.description, /Telegram/u);
   assert.match(publishTool.description, /telegram_chat_id/u);
+  assert.match(publishTool.description, /MUST/u);
 
   const musicTool = tools.find((tool) => tool.name === "ambient_music_build");
   assert.ok(musicTool);

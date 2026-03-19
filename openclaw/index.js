@@ -1441,7 +1441,7 @@ export function registerAmbientTools(api) {
   api.registerTool({
     name: "ambient_video_generate",
     description:
-      "Build ambient music and render the final ambient video in one call. In Telegram sessions, extract sender_id from Conversation info or Sender metadata and pass it as telegram_chat_id so the plugin can create and edit progress messages.",
+      "Build ambient music and render the final ambient video in one call. In Telegram sessions, if Conversation info or Sender metadata includes sender_id / Sender.id, you MUST pass that value as telegram_chat_id; otherwise the plugin cannot send staged progress updates.",
     parameters: ambientVideoGenerateInputSchema,
     schema: ambientVideoGenerateInputSchema,
     async execute(_callId, args) {
@@ -1462,7 +1462,7 @@ export function registerAmbientTools(api) {
   api.registerTool({
     name: "ambient_video_publish",
     description:
-      "Generate an ambient video and upload it to YouTube in one call. In Telegram sessions, extract sender_id from Conversation info or Sender metadata and pass it as telegram_chat_id so the plugin can create and edit progress messages.",
+      "Generate an ambient video and upload it to YouTube in one call. In Telegram sessions, if Conversation info or Sender metadata includes sender_id / Sender.id, you MUST pass that value as telegram_chat_id; otherwise the plugin cannot send staged progress updates.",
     parameters: ambientVideoPublishInputSchema,
     schema: ambientVideoPublishInputSchema,
     async execute(_callId, args) {
