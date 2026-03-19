@@ -36,12 +36,18 @@ The second interpreter install matters because local OpenClaw agent runs may use
 
 ## Required Secrets
 
-After bootstrap, configure:
+After bootstrap, configure the primary provider:
 
 ```bash
-openclaw config set plugins.entries.ambient-media-tools.config.mode elevenlabs
-openclaw config set plugins.entries.ambient-media-tools.config.elevenLabsApiKey 'YOUR_ELEVENLABS_API_KEY'
+openclaw config set plugins.entries.ambient-media-tools.config.mode musicgpt
+openclaw config set plugins.entries.ambient-media-tools.config.musicGptApiKey 'YOUR_MUSICGPT_API_KEY'
 openclaw config set plugins.entries.ambient-media-tools.config.geminiApiKey 'YOUR_GEMINI_API_KEY'
+```
+
+Optional fallback provider:
+
+```bash
+openclaw config set plugins.entries.ambient-media-tools.config.elevenLabsApiKey 'YOUR_ELEVENLABS_API_KEY'
 ```
 
 ## YouTube OAuth
@@ -81,8 +87,9 @@ This verifies:
 
 Keep these out of version control:
 
-- ElevenLabs API key
+- MusicGPT API key
 - Gemini API key
+- ElevenLabs API key
 - `client_secret.json`
 - `token.json`
 

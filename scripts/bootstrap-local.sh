@@ -48,12 +48,15 @@ done
 
 echo "[5/5] next required secrets/config"
 cat <<'EOF'
-- Configure ElevenLabs:
-  openclaw config set plugins.entries.ambient-media-tools.config.mode elevenlabs
-  openclaw config set plugins.entries.ambient-media-tools.config.elevenLabsApiKey 'YOUR_ELEVENLABS_API_KEY'
+- Configure MusicGPT as the primary provider:
+  openclaw config set plugins.entries.ambient-media-tools.config.mode musicgpt
+  openclaw config set plugins.entries.ambient-media-tools.config.musicGptApiKey 'YOUR_MUSICGPT_API_KEY'
 
 - Configure Gemini for nano-banana-pro passthrough:
   openclaw config set plugins.entries.ambient-media-tools.config.geminiApiKey 'YOUR_GEMINI_API_KEY'
+
+- Optional fallback provider:
+  openclaw config set plugins.entries.ambient-media-tools.config.elevenLabsApiKey 'YOUR_ELEVENLABS_API_KEY'
 
 - Put YouTube OAuth client secret at:
   ~/.openclaw/workspace/skills/youtube-publisher/client_secret.json
