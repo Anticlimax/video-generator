@@ -82,7 +82,54 @@ function createElevenLabsProviderWithKey({ elevenLabsApiKey }) {
   };
 }
 
-export function resolveMusicProvider({ mode = "mock", infshAppId, elevenLabsApiKey } = {}) {
+function createMusicGptProviderWithKey({ musicGptApiKey }) {
+  return {
+    name: "musicgpt",
+    timeoutSec: 180,
+    maxRetries: 1,
+    prepareRequest({ prompt, style }) {
+      const trimmedPrompt = String(prompt || "").trim().slice(0, 280);
+      const trimmedStyle = String(style || "").trim().slice(0, 120);
+
+      return {
+        method: "POST",
+        url: "https://api.musicgpt.com/api/public/v1/MusicAI",
+        headers: {
+          Authorization: musicGptApiKey,
+          "content-type": "application/json"
+        },
+        body: {
+          prompt: trimmedPrompt,
+          music_style: trimmedStyle || "ambient instrumental",
+          make_instrumental: true
+        }
+      };
+    },
+    prepareStatusRequest({ taskId }) {
+      return {
+        method: "GET",
+        url: `https://api.musicgpt.com/api/public/v1/byId?conversionType=MUSIC_AI&task_id=${encodeURIComponent(taskId)}`,
+        headers: {
+          Authorization: musicGptApiKey
+        }
+      };
+    },
+    async normalizeResult(input) {
+      return {
+        path: input?.path ?? "jobs/job_001/master_audio.wav",
+        audioSpec: createAudioSpec()
+      };
+    }
+  };
+}
+
+export function resolveMusicProvider({ mode = "mock", infshAppId, elevenLabsApiKey, musicGptApiKey } = {}) {
+  if (mode === "musicgpt") {
+    if (!musicGptApiKey) {
+      throw new Error("musicgpt_api_key_required");
+    }
+    return createMusicGptProviderWithKey({ musicGptApiKey });
+  }
   if (mode === "elevenlabs") {
     if (!elevenLabsApiKey) {
       throw new Error("elevenlabs_api_key_required");

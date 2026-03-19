@@ -70,3 +70,41 @@ test("elevenlabs provider rejects missing api key", () => {
     /elevenlabs_api_key_required/
   );
 });
+
+test("musicgpt provider requires an api key and builds async start/status requests", () => {
+  const provider = resolveMusicProvider({
+    mode: "musicgpt",
+    musicGptApiKey: "musicgpt-key"
+  });
+
+  const startRequest = provider.prepareRequest({
+    prompt: "soft ambient piano for sleep, low dynamics, no percussion",
+    style: "calm piano",
+    durationSec: 120
+  });
+  const statusRequest = provider.prepareStatusRequest({
+    taskId: "task-123"
+  });
+
+  assert.equal(provider.name, "musicgpt");
+  assert.equal(startRequest.method, "POST");
+  assert.equal(startRequest.url, "https://api.musicgpt.com/api/public/v1/MusicAI");
+  assert.equal(startRequest.headers.Authorization, "musicgpt-key");
+  assert.equal(startRequest.headers["content-type"], "application/json");
+  assert.equal(startRequest.body.make_instrumental, true);
+  assert.match(startRequest.body.prompt, /soft ambient piano/i);
+  assert.match(startRequest.body.music_style, /calm piano/i);
+  assert.equal(statusRequest.method, "GET");
+  assert.equal(
+    statusRequest.url,
+    "https://api.musicgpt.com/api/public/v1/byId?conversionType=MUSIC_AI&task_id=task-123"
+  );
+  assert.equal(statusRequest.headers.Authorization, "musicgpt-key");
+});
+
+test("musicgpt provider rejects missing api key", () => {
+  assert.throws(
+    () => resolveMusicProvider({ mode: "musicgpt" }),
+    /musicgpt_api_key_required/
+  );
+});

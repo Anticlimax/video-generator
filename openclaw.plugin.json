@@ -8,9 +8,12 @@
     "properties": {
       "mode": {
         "type": "string",
-        "enum": ["mock", "elevenlabs", "infsh"]
+        "enum": ["mock", "elevenlabs", "musicgpt", "infsh"]
       },
       "elevenLabsApiKey": {
+        "type": "string"
+      },
+      "musicGptApiKey": {
         "type": "string"
       },
       "geminiApiKey": {

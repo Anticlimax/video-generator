@@ -325,7 +325,7 @@ const ambientMusicBuildInputSchema = {
     master_duration_sec: { type: "number" },
     allow_nonstandard_duration: { type: "boolean" },
     seed: { type: "string" },
-    mode: { type: "string", enum: ["mock", "elevenlabs", "infsh"] }
+    mode: { type: "string", enum: ["mock", "elevenlabs", "musicgpt", "infsh"] }
   },
   required: ["theme_id"]
 };
@@ -354,7 +354,7 @@ const ambientVideoGenerateInputSchema = {
     master_duration_sec: { type: "number" },
     allow_nonstandard_duration: { type: "boolean" },
     seed: { type: "string" },
-    mode: { type: "string", enum: ["mock", "elevenlabs", "infsh"] },
+    mode: { type: "string", enum: ["mock", "elevenlabs", "musicgpt", "infsh"] },
     video_template_id: { type: "string" },
     output_name: { type: "string" },
     telegram_chat_id: {
@@ -397,7 +397,7 @@ const ambientVideoPublishInputSchema = {
     master_duration_sec: { type: "number" },
     allow_nonstandard_duration: { type: "boolean" },
     seed: { type: "string" },
-    mode: { type: "string", enum: ["mock", "elevenlabs", "infsh"] },
+    mode: { type: "string", enum: ["mock", "elevenlabs", "musicgpt", "infsh"] },
     video_template_id: { type: "string" },
     output_name: { type: "string" },
     telegram_chat_id: {
@@ -499,6 +499,49 @@ function buildYoutubeTitle({ theme, style, resolvedTheme }) {
     return `${theme} ambient video`;
   }
   return `${resolvedTheme?.label || "Ambient"} ambient video`;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function readMusicGptAudioUrl(payload) {
+  return (
+    payload?.audio_url ||
+    payload?.result?.audio_url ||
+    payload?.data?.audio_url ||
+    payload?.conversion?.audio_url ||
+    payload?.audioUrl ||
+    payload?.result?.audioUrl ||
+    payload?.data?.audioUrl ||
+    null
+  );
+}
+
+function isMusicGptCompleted(payload) {
+  const status = String(
+    payload?.status ||
+      payload?.result?.status ||
+      payload?.data?.status ||
+      payload?.conversion?.status ||
+      ""
+  )
+    .trim()
+    .toLowerCase();
+  return status === "completed" || status === "success" || status === "done";
+}
+
+function isMusicGptFailed(payload) {
+  const status = String(
+    payload?.status ||
+      payload?.result?.status ||
+      payload?.data?.status ||
+      payload?.conversion?.status ||
+      ""
+  )
+    .trim()
+    .toLowerCase();
+  return status === "failed" || status === "error" || status === "cancelled";
 }
 
 async function runYoutubeUpload(api, args) {
@@ -635,7 +678,8 @@ async function runAmbientMusicBuild(api, args) {
   const provider = resolveMusicProvider({
     mode: args?.mode || runtimeConfig?.mode || "mock",
     infshAppId: runtimeConfig?.infshAppId,
-    elevenLabsApiKey: runtimeConfig?.elevenLabsApiKey
+    elevenLabsApiKey: runtimeConfig?.elevenLabsApiKey,
+    musicGptApiKey: runtimeConfig?.musicGptApiKey
   });
   const job = await createJobWorkspace();
   const prompt = buildMusicPrompt({
@@ -692,6 +736,88 @@ async function runAmbientMusicBuild(api, args) {
 
     const downloadPath = path.join(job.jobDir, "master_audio.mp3");
     const downloadBuffer = Buffer.from(await response.arrayBuffer());
+    await writeBinaryFile(downloadPath, downloadBuffer);
+
+    await runCommand("ffmpeg", [
+      "-y",
+      "-i",
+      downloadPath,
+      "-ar",
+      "48000",
+      "-ac",
+      "2",
+      job.masterAudioPath
+    ]);
+  } else if (provider.name === "musicgpt") {
+    const fetchImpl = runtimeConfig?.fetchImpl || globalThis.fetch;
+    if (!fetchImpl) {
+      throw new Error("fetch_unavailable");
+    }
+
+    const startRequest = provider.prepareRequest({
+      prompt,
+      style: String(args?.style || "").trim() || theme?.music_style || "",
+      durationSec: masterDurationSec
+    });
+    const startResponse = await fetchImpl(startRequest.url, {
+      method: startRequest.method,
+      headers: startRequest.headers,
+      body: JSON.stringify(startRequest.body)
+    });
+
+    if (!startResponse.ok) {
+      throw new Error(`musicgpt_request_failed_${startResponse.status}`);
+    }
+
+    const startPayload = await startResponse.json();
+    const taskId = String(startPayload?.task_id || startPayload?.taskId || "").trim();
+    if (!taskId) {
+      throw new Error("musicgpt_task_id_missing");
+    }
+
+    const sleepImpl = runtimeConfig?.sleepImpl || sleep;
+    const deadline = Date.now() + provider.timeoutSec * 1000;
+    let audioUrl = null;
+
+    while (Date.now() < deadline) {
+      const statusRequest = provider.prepareStatusRequest({ taskId });
+      const statusResponse = await fetchImpl(statusRequest.url, {
+        method: statusRequest.method,
+        headers: statusRequest.headers
+      });
+
+      if (!statusResponse.ok) {
+        throw new Error(`musicgpt_status_failed_${statusResponse.status}`);
+      }
+
+      const statusPayload = await statusResponse.json();
+      audioUrl = readMusicGptAudioUrl(statusPayload);
+
+      if (audioUrl && isMusicGptCompleted(statusPayload)) {
+        break;
+      }
+
+      if (isMusicGptFailed(statusPayload)) {
+        throw new Error("musicgpt_generation_failed");
+      }
+
+      await sleepImpl(1000);
+    }
+
+    if (!audioUrl) {
+      throw new Error("musicgpt_generation_timeout");
+    }
+
+    const downloadResponse = await fetchImpl(audioUrl, {
+      method: "GET"
+    });
+
+    if (!downloadResponse.ok) {
+      throw new Error(`musicgpt_download_failed_${downloadResponse.status}`);
+    }
+
+    const downloadPath = path.join(job.jobDir, "master_audio.mp3");
+    const downloadBuffer = Buffer.from(await downloadResponse.arrayBuffer());
     await writeBinaryFile(downloadPath, downloadBuffer);
 
     await runCommand("ffmpeg", [

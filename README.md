@@ -60,10 +60,17 @@ Install and link the plugin:
 openclaw plugins install /Users/liyang/project/video-generate --link
 ```
 
-Enable the plugin and configure ElevenLabs:
+Enable the plugin and configure a music provider:
 
 ```bash
 openclaw config set plugins.entries.ambient-media-tools.enabled true
+openclaw config set plugins.entries.ambient-media-tools.config.mode musicgpt
+openclaw config set plugins.entries.ambient-media-tools.config.musicGptApiKey 'YOUR_MUSICGPT_API_KEY'
+```
+
+ElevenLabs remains available as an alternative provider:
+
+```bash
 openclaw config set plugins.entries.ambient-media-tools.config.mode elevenlabs
 openclaw config set plugins.entries.ambient-media-tools.config.elevenLabsApiKey 'YOUR_ELEVENLABS_API_KEY'
 ```
@@ -87,7 +94,7 @@ Standard one-shot generation with free-text theme/style:
   "theme": "ocean",
   "style": "calm piano, soft moonlight, low stimulation",
   "duration_target_sec": 3600,
-  "mode": "elevenlabs",
+  "mode": "musicgpt",
   "output_name": "ocean-piano-1h"
 }
 ```
