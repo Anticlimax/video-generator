@@ -8,6 +8,9 @@ const store = createJobStore({
 });
 
 function resolveArtifactPath(job, kind) {
+  if (kind === "video-image") {
+    return job.videoImagePath || null;
+  }
   if (kind === "cover") {
     return job.coverImagePath || null;
   }
@@ -18,6 +21,9 @@ function resolveArtifactPath(job, kind) {
 }
 
 function resolveContentType(kind, filePath) {
+  if (kind === "video-image") {
+    return "image/png";
+  }
   if (kind === "cover") {
     return "image/png";
   }

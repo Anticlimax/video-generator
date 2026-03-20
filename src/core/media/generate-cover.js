@@ -97,6 +97,7 @@ export async function generateCover({
   theme = "",
   style = "",
   resolvedTheme = null,
+  prompt = "",
   runtimeConfig = {},
   runCommandImpl = runCommand,
   coverGeneratorImpl
@@ -110,11 +111,13 @@ export async function generateCover({
   });
   const imagePath =
     String(artifactPaths.imagePath || "").trim() || path.join(job.jobDir, "cover_image.png");
-  const prompt = buildCoverPrompt({
-    theme: String(theme || "").trim(),
-    style: String(style || "").trim(),
-    resolvedTheme
-  });
+  const resolvedPrompt =
+    String(prompt || "").trim() ||
+    buildCoverPrompt({
+      theme: String(theme || "").trim(),
+      style: String(style || "").trim(),
+      resolvedTheme
+    });
 
   const generator = coverGeneratorImpl
     ? coverGeneratorImpl
@@ -122,7 +125,7 @@ export async function generateCover({
 
   const coverResult = await generator({
     outputPath: imagePath,
-    prompt
+    prompt: resolvedPrompt
   });
 
   await fs.mkdir(path.dirname(coverResult.imagePath), { recursive: true });
@@ -134,7 +137,7 @@ export async function generateCover({
     themeId: resolvedTheme?.id || null,
     themeVersion: resolvedTheme?.version || null,
     imagePath: coverResult.imagePath,
-    prompt: coverResult.prompt,
+    prompt: coverResult.prompt || resolvedPrompt,
     provider: coverResult.provider
   };
 }

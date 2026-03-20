@@ -30,6 +30,7 @@ function mapArtifactsToTopLevel(input = {}) {
   const artifacts = input.artifacts && typeof input.artifacts === "object" ? input.artifacts : {};
   return {
     ...input,
+    videoImagePath: input.videoImagePath ?? artifacts.videoImagePath,
     coverImagePath: input.coverImagePath ?? artifacts.coverImagePath,
     masterAudioPath: input.masterAudioPath ?? artifacts.masterAudioPath,
     finalVideoPath: input.finalVideoPath ?? artifacts.finalVideoPath,
@@ -90,11 +91,15 @@ export function createJobStore({
       masterDurationSec: normalizedInput.masterDurationSec,
       provider: normalizedInput.provider,
       publishToYouTube: normalizedInput.publishToYouTube,
+      videoVisualPrompt: normalizedInput.videoVisualPrompt,
+      generateSeparateCover: normalizedInput.generateSeparateCover,
+      coverPrompt: normalizedInput.coverPrompt,
       status: normalizedInput.status,
       stage: normalizedInput.stage,
       progress: normalizedInput.progress,
       createdAt: timestamp.toISOString(),
       updatedAt: timestamp.toISOString(),
+      videoImagePath: normalizedInput.videoImagePath,
       coverImagePath: normalizedInput.coverImagePath,
       masterAudioPath: normalizedInput.masterAudioPath,
       finalVideoPath: normalizedInput.finalVideoPath,

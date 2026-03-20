@@ -17,11 +17,15 @@ type JobRecord = {
   durationTargetSec: number;
   masterDurationSec?: number | null;
   provider?: string | null;
+  videoImagePath?: string | null;
   coverImagePath?: string | null;
   masterAudioPath?: string | null;
   finalVideoPath?: string | null;
   youtubeUrl?: string | null;
   youtubeVideoId?: string | null;
+  videoVisualPrompt?: string | null;
+  generateSeparateCover?: boolean;
+  coverPrompt?: string | null;
 };
 
 type JobDetailClientProps = {

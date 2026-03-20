@@ -1,6 +1,7 @@
 type JobResultCardProps = {
   job: {
     id: string;
+    videoImagePath?: string | null;
     coverImagePath?: string | null;
     masterAudioPath?: string | null;
     finalVideoPath?: string | null;
@@ -25,8 +26,10 @@ function ResultRow({ label, value }: { label: string; value: string | null | und
 }
 
 export default function JobResultCard({ job }: JobResultCardProps) {
+  const videoImageUrl = job.videoImagePath ? `/api/jobs/${job.id}/artifacts/video-image` : null;
   const coverUrl = job.coverImagePath ? `/api/jobs/${job.id}/artifacts/cover` : null;
   const videoUrl = job.finalVideoPath ? `/api/jobs/${job.id}/artifacts/video` : null;
+  const coverReusesVideoImage = Boolean(job.videoImagePath && job.coverImagePath && job.videoImagePath === job.coverImagePath);
 
   return (
     <section className="card job-panel">
@@ -37,9 +40,17 @@ export default function JobResultCard({ job }: JobResultCardProps) {
         </div>
       </div>
 
+      {videoImageUrl ? (
+        <div className="job-preview">
+          <img src={videoImageUrl} alt="Generated video image preview" className="job-preview__image" />
+          <p className="job-preview__note">视频画面图</p>
+        </div>
+      ) : null}
+
       {coverUrl ? (
         <div className="job-preview">
           <img src={coverUrl} alt="Generated cover preview" className="job-preview__image" />
+          {coverReusesVideoImage ? <p className="job-preview__note">封面复用视频画面图</p> : <p className="job-preview__note">封面图</p>}
         </div>
       ) : null}
 
@@ -55,7 +66,8 @@ export default function JobResultCard({ job }: JobResultCardProps) {
       ) : null}
 
       <dl className="job-result">
-        <ResultRow label="Cover image" value={job.coverImagePath} />
+        <ResultRow label="视频画面图" value={job.videoImagePath} />
+        <ResultRow label="封面图" value={job.coverImagePath} />
         <ResultRow label="Master audio" value={job.masterAudioPath} />
         <ResultRow label="Final video" value={job.finalVideoPath} />
         <ResultRow label="YouTube video id" value={job.youtubeVideoId} />

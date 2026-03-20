@@ -212,6 +212,64 @@ test("runJob falls back to template rendering when cover generation fails", asyn
   assert.equal(completed?.finalVideoPath, path.join(rootDir, "outputs", "storm-city.mp4"));
 });
 
+test("runJob uses a separate cover prompt when requested", async () => {
+  const rootDir = makeTempDir();
+  const store = createJobStore({
+    rootDir,
+    now: (() => {
+      let tick = 0;
+      return () => new Date(1773993600000 + tick++ * 1000);
+    })(),
+    randomSuffix: (() => {
+      let tick = 0;
+      return () => `p${tick++}x3`;
+    })()
+  });
+
+  const created = await store.create({
+    theme: "storm city",
+    style: "cinematic storm ambience",
+    durationTargetSec: 30,
+    provider: "mock",
+    publishToYouTube: false,
+    generateSeparateCover: true,
+    videoVisualPrompt: "storm clouds over neon towers",
+    coverPrompt: "cinematic thunderstorm poster art"
+  });
+
+  const prompts = [];
+
+  const completed = await runJob({
+    jobId: created.id,
+    store,
+    generateMusicImpl: async () => ({
+      masterAudioPath: path.join(rootDir, created.id, "master_audio.wav"),
+      masterDurationSec: 30,
+      provider: "mock"
+    }),
+    generateCoverImpl: async ({ prompt }) => {
+      prompts.push(prompt);
+      return {
+        imagePath: path.join(rootDir, created.id, prompts.length === 1 ? "video_image.png" : "cover_image.png"),
+        prompt
+      };
+    },
+    renderVideoImpl: async ({ imagePath }) => {
+      assert.equal(imagePath, path.join(rootDir, created.id, "video_image.png"));
+      return {
+        finalOutputPath: path.join(rootDir, "outputs", "storm-city.mp4"),
+        ffprobeSummary: { videoStreams: 1, audioStreams: 1 },
+        fileSizes: { finalBytes: 1024 }
+      };
+    }
+  });
+
+  assert.equal(completed?.status, "completed");
+  assert.equal(completed?.coverImagePath, path.join(rootDir, created.id, "cover_image.png"));
+  assert.equal(prompts[0], "storm clouds over neon towers");
+  assert.equal(prompts[1], "cinematic thunderstorm poster art");
+});
+
 test("createJob schedules async execution and returns the created job immediately", async () => {
   const rootDir = makeTempDir();
   const store = createJobStore({

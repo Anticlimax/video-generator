@@ -41,6 +41,7 @@ export default function JobForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [generateSeparateCover, setGenerateSeparateCover] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,6 +54,9 @@ export default function JobForm() {
     const durationRaw = String(formData.get("duration") || "").trim();
     const provider = String(formData.get("provider") || "musicgpt").trim();
     const publishToYouTube = formData.get("publishToYouTube") === "on";
+    const videoVisualPrompt = String(formData.get("videoVisualPrompt") || "").trim();
+    const generateSeparateCoverValue = formData.get("generateSeparateCover") === "on";
+    const coverPrompt = String(formData.get("coverPrompt") || "").trim();
 
     try {
       const payload = {
@@ -60,7 +64,10 @@ export default function JobForm() {
         style,
         durationTargetSec: parseDurationToSeconds(durationRaw),
         provider,
-        publishToYouTube
+        publishToYouTube,
+        videoVisualPrompt,
+        generateSeparateCover: generateSeparateCoverValue,
+        coverPrompt
       };
 
       const response = await fetch("/api/jobs", {
@@ -107,6 +114,15 @@ export default function JobForm() {
       </label>
 
       <label>
+        视频画面描述
+        <textarea
+          name="videoVisualPrompt"
+          placeholder="storm clouds over neon towers"
+          rows={4}
+        />
+      </label>
+
+      <label>
         Provider
         <select name="provider" defaultValue="musicgpt">
           <option value="musicgpt">MusicGPT</option>
@@ -119,6 +135,27 @@ export default function JobForm() {
         <input type="checkbox" name="publishToYouTube" />
         <span>Publish to YouTube after generation</span>
       </label>
+
+      <label className="job-form__toggle">
+        <input
+          type="checkbox"
+          name="generateSeparateCover"
+          checked={generateSeparateCover}
+          onChange={(event) => setGenerateSeparateCover(event.target.checked)}
+        />
+        <span>单独生成封面图</span>
+      </label>
+
+      {generateSeparateCover ? (
+        <label>
+          封面图描述
+          <textarea
+            name="coverPrompt"
+            placeholder="cinematic thunderstorm poster art"
+            rows={4}
+          />
+        </label>
+      ) : null}
 
       {error ? <p className="job-form__error">{error}</p> : null}
 

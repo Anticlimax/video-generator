@@ -40,6 +40,7 @@ export async function runJob({
   const jobDir = path.join(resolvedRootDir, jobId);
   const artifactPaths = {
     masterAudioPath: path.join(jobDir, "master_audio.wav"),
+    videoImagePath: path.join(jobDir, "video_image.png"),
     coverImagePath: path.join(jobDir, "cover_image.png"),
     extendedAudioPath: path.join(jobDir, "extended_audio.wav"),
     loopVideoPath: path.join(jobDir, "loop_video.mp4"),
@@ -75,6 +76,7 @@ export async function runJob({
       masterDurationSec: musicResult.masterDurationSec
     });
 
+    let videoImageResult = null;
     let coverResult = null;
     try {
       await store.update(jobId, {
@@ -83,24 +85,62 @@ export async function runJob({
         progress: 55
       });
 
-      coverResult = await generateCoverImpl({
+      videoImageResult = await generateCoverImpl({
         rootDir,
         jobDir,
-        artifactPaths,
+        artifactPaths: {
+          ...artifactPaths,
+          imagePath: artifactPaths.videoImagePath
+        },
         theme: currentJob.theme,
         style: currentJob.style,
         resolvedTheme,
+        prompt: currentJob.videoVisualPrompt || "",
         runtimeConfig
       });
     } catch {
-      coverResult = null;
+      videoImageResult = null;
     } finally {
       await store.update(jobId, {
         status: "running",
         stage: "cover_ready",
         progress: 70,
-        coverImagePath: coverResult?.imagePath || null
+        videoImagePath: videoImageResult?.imagePath || null,
+        coverImagePath: currentJob.generateSeparateCover ? null : videoImageResult?.imagePath || null
       });
+    }
+
+    if (currentJob.generateSeparateCover) {
+      try {
+        await store.update(jobId, {
+          status: "running",
+          stage: "cover_generating",
+          progress: 75
+        });
+
+        coverResult = await generateCoverImpl({
+          rootDir,
+          jobDir,
+          artifactPaths: {
+            ...artifactPaths,
+            imagePath: artifactPaths.coverImagePath
+          },
+          theme: currentJob.theme,
+          style: currentJob.style,
+          resolvedTheme,
+          prompt: currentJob.coverPrompt || "",
+          runtimeConfig
+        });
+      } catch {
+        coverResult = null;
+      } finally {
+        await store.update(jobId, {
+          status: "running",
+          stage: "cover_ready",
+          progress: 80,
+          coverImagePath: coverResult?.imagePath || videoImageResult?.imagePath || null
+        });
+      }
     }
 
     await store.update(jobId, {
@@ -109,6 +149,8 @@ export async function runJob({
       progress: 85
     });
 
+    const finalCoverImagePath = coverResult?.imagePath || videoImageResult?.imagePath || null;
+
     const renderResult = await renderVideoImpl({
       rootDir,
       outputRootDir,
@@ -116,7 +158,7 @@ export async function runJob({
       artifactPaths,
       themeId: resolvedTheme?.id || "sleep-piano",
       masterAudioPath: musicResult.masterAudioPath,
-      imagePath: coverResult?.imagePath || null,
+      imagePath: videoImageResult?.imagePath || null,
       durationTargetSec: currentJob.durationTargetSec,
       videoTemplateId: resolvedTheme?.video_template_id || "default-black",
       outputName: buildOutputName(currentJob)
@@ -126,6 +168,8 @@ export async function runJob({
       status: "completed",
       stage: "completed",
       progress: 100,
+      videoImagePath: videoImageResult?.imagePath || null,
+      coverImagePath: finalCoverImagePath,
       finalVideoPath: renderResult.finalOutputPath,
       youtubeUrl: null,
       youtubeVideoId: null,
@@ -156,6 +200,8 @@ export async function runJob({
         status: "completed",
         stage: "completed",
         progress: 100,
+        videoImagePath: videoImageResult?.imagePath || null,
+        coverImagePath: finalCoverImagePath,
         finalVideoPath: renderResult.finalOutputPath,
         youtubeUrl: publishResult.url || null,
         youtubeVideoId: publishResult.videoId || null,
@@ -167,6 +213,8 @@ export async function runJob({
         status: "completed",
         stage: "completed",
         progress: 100,
+        videoImagePath: videoImageResult?.imagePath || null,
+        coverImagePath: finalCoverImagePath,
         finalVideoPath: renderResult.finalOutputPath,
         youtubeUrl: null,
         youtubeVideoId: null,

@@ -13,6 +13,7 @@ export const JOB_STAGES = Object.freeze([
 ]);
 
 const DEFAULT_ARTIFACT_FIELDS = Object.freeze({
+  videoImagePath: null,
   coverImagePath: null,
   masterAudioPath: null,
   finalVideoPath: null,
@@ -70,6 +71,7 @@ function normalizeProgress(value) {
 
 function normalizeArtifacts(record = {}) {
   return {
+    videoImagePath: normalizeOptionalText(record.videoImagePath),
     coverImagePath: normalizeOptionalText(record.coverImagePath),
     masterAudioPath: normalizeOptionalText(record.masterAudioPath),
     finalVideoPath: normalizeOptionalText(record.finalVideoPath),
@@ -101,6 +103,9 @@ export function createJobRecord(input = {}) {
     masterDurationSec: normalizeOptionalNumber(input.masterDurationSec),
     provider: normalizeOptionalText(input.provider) || "mock",
     publishToYouTube: Boolean(input.publishToYouTube),
+    videoVisualPrompt: normalizeOptionalText(input.videoVisualPrompt),
+    generateSeparateCover: Boolean(input.generateSeparateCover),
+    coverPrompt: normalizeOptionalText(input.coverPrompt),
     status,
     stage,
     progress: normalizeProgress(input.progress),
@@ -126,6 +131,10 @@ export function mergeJobRecord(existing, patch = {}, nowIso) {
       restPatch.masterAudioPath !== undefined
         ? normalizeOptionalText(restPatch.masterAudioPath)
         : existing.masterAudioPath,
+    videoImagePath:
+      restPatch.videoImagePath !== undefined
+        ? normalizeOptionalText(restPatch.videoImagePath)
+        : existing.videoImagePath,
     coverImagePath:
       restPatch.coverImagePath !== undefined
         ? normalizeOptionalText(restPatch.coverImagePath)
@@ -142,6 +151,18 @@ export function mergeJobRecord(existing, patch = {}, nowIso) {
       restPatch.youtubeVideoId !== undefined
         ? normalizeOptionalText(restPatch.youtubeVideoId)
         : existing.youtubeVideoId,
+    videoVisualPrompt:
+      restPatch.videoVisualPrompt !== undefined
+        ? normalizeOptionalText(restPatch.videoVisualPrompt)
+        : existing.videoVisualPrompt,
+    generateSeparateCover:
+      restPatch.generateSeparateCover !== undefined
+        ? Boolean(restPatch.generateSeparateCover)
+        : existing.generateSeparateCover,
+    coverPrompt:
+      restPatch.coverPrompt !== undefined
+        ? normalizeOptionalText(restPatch.coverPrompt)
+        : existing.coverPrompt,
     progress:
       restPatch.progress !== undefined ? normalizeProgress(restPatch.progress) : existing.progress,
     publishToYouTube:

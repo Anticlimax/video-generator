@@ -56,6 +56,11 @@ function parseCreateJobInput(body = {}) {
     masterDurationSec: parseOptionalNumber(body.masterDurationSec ?? body.master_duration_sec),
     provider: toTrimmedString(body.provider || body.mode || "mock") || "mock",
     publishToYouTube: parseBoolean(body.publishToYouTube ?? body.publish_to_youtube),
+    videoVisualPrompt: toTrimmedString(body.videoVisualPrompt ?? body.video_visual_prompt) || undefined,
+    generateSeparateCover: parseBoolean(
+      body.generateSeparateCover ?? body.generate_separate_cover ?? false
+    ),
+    coverPrompt: toTrimmedString(body.coverPrompt ?? body.cover_prompt) || undefined,
     videoTemplateId: toTrimmedString(body.videoTemplateId || body.video_template_id) || undefined,
     outputName: toTrimmedString(body.outputName || body.output_name) || undefined,
     seed: toTrimmedString(body.seed) || undefined

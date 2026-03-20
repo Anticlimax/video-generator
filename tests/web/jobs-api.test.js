@@ -51,7 +51,10 @@ test("jobs api creates a job and returns the created record", async () => {
       style: "cinematic storm ambience",
       durationTargetSec: 30,
       masterDurationSec: 20,
-      provider: "musicgpt"
+      provider: "musicgpt",
+      videoVisualPrompt: "storm clouds over neon towers",
+      generateSeparateCover: true,
+      coverPrompt: "cinematic thunderstorm poster art"
     })
   );
 
@@ -62,6 +65,9 @@ test("jobs api creates a job and returns the created record", async () => {
   assert.equal(createdJobs.length, 1);
   assert.equal(createdJobs[0].provider, "musicgpt");
   assert.equal(createdJobs[0].masterDurationSec, 20);
+  assert.equal(createdJobs[0].videoVisualPrompt, "storm clouds over neon towers");
+  assert.equal(createdJobs[0].generateSeparateCover, true);
+  assert.equal(createdJobs[0].coverPrompt, "cinematic thunderstorm poster art");
 });
 
 test("jobs api lists jobs newest first", async () => {
