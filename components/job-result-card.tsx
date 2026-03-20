@@ -1,5 +1,6 @@
 type JobResultCardProps = {
   job: {
+    id: string;
     coverImagePath?: string | null;
     masterAudioPath?: string | null;
     finalVideoPath?: string | null;
@@ -24,6 +25,9 @@ function ResultRow({ label, value }: { label: string; value: string | null | und
 }
 
 export default function JobResultCard({ job }: JobResultCardProps) {
+  const coverUrl = job.coverImagePath ? `/api/jobs/${job.id}/artifacts/cover` : null;
+  const videoUrl = job.finalVideoPath ? `/api/jobs/${job.id}/artifacts/video` : null;
+
   return (
     <section className="card job-panel">
       <div className="job-panel__header">
@@ -32,6 +36,23 @@ export default function JobResultCard({ job }: JobResultCardProps) {
           <h2>Artifacts</h2>
         </div>
       </div>
+
+      {coverUrl ? (
+        <div className="job-preview">
+          <img src={coverUrl} alt="Generated cover preview" className="job-preview__image" />
+        </div>
+      ) : null}
+
+      {videoUrl ? (
+        <div className="job-preview">
+          <video
+            src={videoUrl}
+            controls
+            preload="metadata"
+            className="job-preview__video"
+          />
+        </div>
+      ) : null}
 
       <dl className="job-result">
         <ResultRow label="Cover image" value={job.coverImagePath} />

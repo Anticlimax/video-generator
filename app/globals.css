@@ -221,6 +221,22 @@ h1 {
   margin: 0;
 }
 
+.job-preview {
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.job-preview__image,
+.job-preview__video {
+  display: block;
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.24);
+}
+
 .job-result code {
   display: block;
   padding: 10px 12px;
