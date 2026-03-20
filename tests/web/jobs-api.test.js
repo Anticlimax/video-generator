@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   createJobsApiHandlers
-} from "../../src/server/jobs/web-api.js";
+} from "../../src/core/jobs/web-api.js";
 
 function buildJsonRequest(url, body) {
   return new Request(url, {

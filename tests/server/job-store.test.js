@@ -8,7 +8,7 @@ import {
   JOB_STAGES,
   JOB_STATUSES,
   createJobStore
-} from "../../src/server/jobs/job-store.js";
+} from "../../src/core/jobs/job-store.js";
 
 function makeTempDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "ambient-job-store-"));

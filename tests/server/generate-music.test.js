@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { generateMusic } from "../../src/server/media/generate-music.js";
+import { generateMusic } from "../../src/core/media/generate-music.js";
 
 function makeTempDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "ambient-generate-music-"));

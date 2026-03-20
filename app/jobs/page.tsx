@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { createJobStore } from "../../src/server/jobs/job-store.js";
+import { createJobStore } from "../../src/core/jobs/job-store.js";
 import JobsTable from "../../components/jobs-table";
 
 const store = createJobStore({

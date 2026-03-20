@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { buildCoverPrompt, generateCover } from "../../src/server/media/generate-cover.js";
+import { buildCoverPrompt, generateCover } from "../../src/core/media/generate-cover.js";
 
 function makeTempDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "ambient-generate-cover-"));

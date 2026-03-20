@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { renderVideo } from "../../src/server/media/render-video.js";
+import { renderVideo } from "../../src/core/media/render-video.js";
 
 function makeTempDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "ambient-render-video-"));

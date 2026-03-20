@@ -4,9 +4,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { createJobStore } from "../../src/server/jobs/job-store.js";
-import { runJob } from "../../src/server/jobs/run-job.js";
-import { createJob } from "../../src/server/jobs/create-job.js";
+import { createJobStore } from "../../src/core/jobs/job-store.js";
+import { runJob } from "../../src/core/jobs/run-job.js";
+import { createJob } from "../../src/core/jobs/create-job.js";
 
 function makeTempDir() {
   return fs.mkdtempSync(path.join(os.tmpdir(), "ambient-run-job-"));

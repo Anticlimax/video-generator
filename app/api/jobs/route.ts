@@ -1,5 +1,5 @@
-import { createJobStore } from "../../../src/server/jobs/job-store.js";
-import { createJobsApiHandlers } from "../../../src/server/jobs/web-api.js";
+import { createJobStore } from "../../../src/core/jobs/job-store.js";
+import { createJobsApiHandlers } from "../../../src/core/jobs/web-api.js";
 
 const store = createJobStore();
 const api = createJobsApiHandlers({ store });
