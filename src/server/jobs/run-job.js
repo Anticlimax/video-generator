@@ -3,6 +3,7 @@ import path from "node:path";
 import { generateMusic } from "../media/generate-music.js";
 import { generateCover } from "../media/generate-cover.js";
 import { renderVideo } from "../media/render-video.js";
+import { publishVideo } from "../publish/youtube.js";
 
 function toErrorCode(error) {
   const message = String(error?.message || "job_run_failed").trim();
@@ -28,7 +29,8 @@ export async function runJob({
   runtimeConfig = {},
   generateMusicImpl = generateMusic,
   generateCoverImpl = generateCover,
-  renderVideoImpl = renderVideo
+  renderVideoImpl = renderVideo,
+  publishVideoImpl = publishVideo
 } = {}) {
   const currentJob = await store.getById(jobId);
   if (!currentJob) {
@@ -103,12 +105,58 @@ export async function runJob({
       outputName: buildOutputName(currentJob)
     });
 
-    return store.update(jobId, {
+    const completedCoreJob = await store.update(jobId, {
       status: "completed",
       stage: "completed",
       progress: 100,
-      finalVideoPath: renderResult.finalOutputPath
+      finalVideoPath: renderResult.finalOutputPath,
+      youtubeUrl: null,
+      youtubeVideoId: null,
+      errorCode: null,
+      errorMessage: null
     });
+
+    if (!currentJob.publishToYouTube) {
+      return completedCoreJob;
+    }
+
+    await store.update(jobId, {
+      status: "running",
+      stage: "youtube_uploading",
+      progress: 90
+    });
+
+    try {
+      const publishResult = await publishVideoImpl({
+        videoPath: renderResult.finalOutputPath,
+        theme: currentJob.theme,
+        style: currentJob.style,
+        resolvedTheme,
+        runtimeConfig
+      });
+
+      return store.update(jobId, {
+        status: "completed",
+        stage: "completed",
+        progress: 100,
+        finalVideoPath: renderResult.finalOutputPath,
+        youtubeUrl: publishResult.url || null,
+        youtubeVideoId: publishResult.videoId || null,
+        errorCode: null,
+        errorMessage: null
+      });
+    } catch (error) {
+      return store.update(jobId, {
+        status: "completed",
+        stage: "completed",
+        progress: 100,
+        finalVideoPath: renderResult.finalOutputPath,
+        youtubeUrl: null,
+        youtubeVideoId: null,
+        errorCode: toErrorCode(error),
+        errorMessage: String(error?.message || "youtube_publish_failed").trim() || "youtube_publish_failed"
+      });
+    }
   } catch (error) {
     return store.update(jobId, {
       status: "failed",
