@@ -15,25 +15,24 @@ function defaultRandomSuffix() {
 
 export async function createJobWorkspace({
   rootDir = "jobs",
+  jobDir,
   now = new Date(),
   randomSuffix = defaultRandomSuffix
 } = {}) {
-  const stamp = buildStamp(now);
-  const suffix = randomSuffix();
-  const jobId = `job_${stamp}_${suffix}`;
-  const jobDir = path.join(rootDir, jobId);
+  const resolvedJobDir = jobDir || path.join(rootDir, `job_${buildStamp(now)}_${randomSuffix()}`);
+  const jobId = path.basename(resolvedJobDir);
 
-  await fs.mkdir(jobDir, { recursive: true });
+  await fs.mkdir(resolvedJobDir, { recursive: true });
 
   return {
     jobId,
-    jobDir,
-    masterAudioPath: path.join(jobDir, "master_audio.wav"),
-    extendedAudioPath: path.join(jobDir, "extended_audio.wav"),
-    loopVideoPath: path.join(jobDir, "loop_video.mp4"),
-    finalOutputPath: path.join(jobDir, "output.mp4"),
-    ffprobePath: path.join(jobDir, "ffprobe.json"),
-    progressPath: path.join(jobDir, "progress.json")
+    jobDir: resolvedJobDir,
+    masterAudioPath: path.join(resolvedJobDir, "master_audio.wav"),
+    extendedAudioPath: path.join(resolvedJobDir, "extended_audio.wav"),
+    loopVideoPath: path.join(resolvedJobDir, "loop_video.mp4"),
+    finalOutputPath: path.join(resolvedJobDir, "output.mp4"),
+    ffprobePath: path.join(resolvedJobDir, "ffprobe.json"),
+    progressPath: path.join(resolvedJobDir, "progress.json")
   };
 }
 

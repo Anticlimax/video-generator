@@ -53,3 +53,45 @@ test("renderVideo creates audio, video, and final output artifacts", async () =>
   });
   assert.deepEqual(commands.map((entry) => entry.command), ["ffmpeg", "ffmpeg", "ffmpeg"]);
 });
+
+test("renderVideo writes artifacts into the provided job workspace", async () => {
+  const rootDir = makeTempDir();
+  const outputDir = path.join(rootDir, "outputs");
+  const jobDir = path.join(rootDir, "jobs", "job_20260320_092000_web01");
+  const sourceAudioPath = path.join(jobDir, "master_audio.wav");
+  const sourceImagePath = path.join(jobDir, "cover.png");
+  await fs.promises.mkdir(jobDir, { recursive: true });
+  await fs.promises.writeFile(sourceAudioPath, "source wav");
+  await fs.promises.writeFile(sourceImagePath, "source png");
+
+  const result = await renderVideo({
+    rootDir,
+    outputRootDir: outputDir,
+    jobDir,
+    artifactPaths: {
+      extendedAudioPath: path.join(jobDir, "extended_audio.wav"),
+      loopVideoPath: path.join(jobDir, "loop_video.mp4"),
+      ffprobePath: path.join(jobDir, "ffprobe.json")
+    },
+    now: () => new Date("2026-03-20T09:20:00Z"),
+    randomSuffix: () => "r123",
+    masterAudioPath: sourceAudioPath,
+    imagePath: sourceImagePath,
+    durationTargetSec: 12,
+    outputName: "storm-output",
+    runCommandImpl: async (command, args) => {
+      const outputPath = args[args.length - 1];
+      await fs.promises.mkdir(path.dirname(outputPath), { recursive: true });
+      await fs.promises.writeFile(outputPath, "generated");
+    },
+    probeMediaImpl: async () => ({
+      streams: [{ codec_type: "video" }, { codec_type: "audio" }],
+      format: { duration: "12.0", size: "1234" }
+    })
+  });
+
+  assert.equal(result.jobDir, jobDir);
+  assert.equal(result.audioOutputPath, path.join(jobDir, "extended_audio.wav"));
+  assert.equal(result.videoOutputPath, path.join(jobDir, "loop_video.mp4"));
+  assert.equal(result.finalOutputPath, path.join(outputDir, "storm-output.mp4"));
+});

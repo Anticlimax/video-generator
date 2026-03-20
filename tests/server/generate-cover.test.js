@@ -54,3 +54,34 @@ test("generateCover creates a cover artifact through the injected generator", as
   assert.equal(fs.existsSync(result.imagePath), true);
   assert.equal(calls.length, 1);
 });
+
+test("generateCover writes artifacts into the provided job workspace", async () => {
+  const rootDir = makeTempDir();
+  const jobDir = path.join(rootDir, "jobs", "job_20260320_091000_web01");
+  const artifactPaths = {
+    imagePath: path.join(jobDir, "cover_image.png")
+  };
+
+  const result = await generateCover({
+    rootDir,
+    jobDir,
+    artifactPaths,
+    now: () => new Date("2026-03-20T09:10:00Z"),
+    randomSuffix: () => "c123",
+    theme: "mysterious forest",
+    style: "soft moonlit ambience",
+    coverGeneratorImpl: async ({ outputPath, prompt }) => {
+      await fs.promises.mkdir(path.dirname(outputPath), { recursive: true });
+      await fs.promises.writeFile(outputPath, "fake png");
+      return {
+        imagePath: outputPath,
+        prompt,
+        provider: "test-cover-provider"
+      };
+    }
+  });
+
+  assert.equal(result.jobDir, jobDir);
+  assert.equal(result.imagePath, artifactPaths.imagePath);
+  assert.equal(fs.existsSync(result.imagePath), true);
+});

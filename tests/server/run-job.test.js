@@ -82,6 +82,59 @@ test("runJob advances job stages and persists final artifacts", async () => {
   assert.equal(completed?.errorMessage, null);
 });
 
+test("runJob keeps media artifacts inside the top-level web job directory", async () => {
+  const rootDir = makeTempDir();
+  const store = createJobStore({
+    rootDir,
+    now: (() => {
+      let tick = 0;
+      return () => new Date(1773993600000 + tick++ * 1000);
+    })(),
+    randomSuffix: (() => {
+      let tick = 0;
+      return () => `w${tick++}x9`;
+    })()
+  });
+
+  const created = await store.create({
+    theme: "storm city",
+    style: "cinematic storm ambience",
+    durationTargetSec: 30,
+    provider: "mock"
+  });
+
+  const completed = await runJob({
+    jobId: created.id,
+    store,
+    generateMusicImpl: async ({ jobDir }) => ({
+      masterAudioPath: path.join(jobDir, "master_audio.wav"),
+      masterDurationSec: 30,
+      provider: "mock"
+    }),
+    generateCoverImpl: async ({ jobDir }) => ({
+      imagePath: path.join(jobDir, "cover_image.png")
+    }),
+    renderVideoImpl: async ({ jobDir, artifactPaths, imagePath, masterAudioPath }) => {
+      assert.equal(jobDir, path.join(rootDir, created.id));
+      assert.equal(masterAudioPath, path.join(jobDir, "master_audio.wav"));
+      assert.equal(imagePath, path.join(jobDir, "cover_image.png"));
+      assert.equal(artifactPaths.extendedAudioPath, path.join(jobDir, "extended_audio.wav"));
+      assert.equal(artifactPaths.loopVideoPath, path.join(jobDir, "loop_video.mp4"));
+      assert.equal(artifactPaths.ffprobePath, path.join(jobDir, "ffprobe.json"));
+      return {
+        finalOutputPath: path.join(rootDir, "outputs", "storm-city.mp4"),
+        ffprobeSummary: { videoStreams: 1, audioStreams: 1 },
+        fileSizes: { finalBytes: 1024 }
+      };
+    }
+  });
+
+  assert.equal(completed?.status, "completed");
+  assert.equal(completed?.masterAudioPath, path.join(rootDir, created.id, "master_audio.wav"));
+  assert.equal(completed?.coverImagePath, path.join(rootDir, created.id, "cover_image.png"));
+  assert.equal(completed?.finalVideoPath, path.join(rootDir, "outputs", "storm-city.mp4"));
+});
+
 test("runJob marks the job as failed when media generation throws", async () => {
   const rootDir = makeTempDir();
   const store = createJobStore({

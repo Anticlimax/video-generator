@@ -90,6 +90,8 @@ async function runDefaultCoverGenerator({
 
 export async function generateCover({
   rootDir = "jobs",
+  jobDir,
+  artifactPaths = {},
   now,
   randomSuffix,
   theme = "",
@@ -102,10 +104,12 @@ export async function generateCover({
   const resolvedNow = typeof now === "function" ? now() : now || new Date();
   const job = await createJobWorkspace({
     rootDir,
+    jobDir,
     now: resolvedNow,
     randomSuffix
   });
-  const imagePath = path.join(job.jobDir, "cover_image.png");
+  const imagePath =
+    String(artifactPaths.imagePath || "").trim() || path.join(job.jobDir, "cover_image.png");
   const prompt = buildCoverPrompt({
     theme: String(theme || "").trim(),
     style: String(style || "").trim(),

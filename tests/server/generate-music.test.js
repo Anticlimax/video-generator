@@ -41,3 +41,33 @@ test("generateMusic builds a mock ambient master artifact", async () => {
   assert.equal(fs.existsSync(result.masterAudioPath), true);
   assert.deepEqual(calls.map((entry) => entry.command), ["ffmpeg"]);
 });
+
+test("generateMusic writes artifacts into the provided job workspace", async () => {
+  const rootDir = makeTempDir();
+  const jobDir = path.join(rootDir, "jobs", "job_20260320_090000_web01");
+  const artifactPaths = {
+    masterAudioPath: path.join(jobDir, "master_audio.wav")
+  };
+
+  const result = await generateMusic({
+    rootDir,
+    jobDir,
+    artifactPaths,
+    now: () => new Date("2026-03-20T09:00:00Z"),
+    randomSuffix: () => "m123",
+    theme: "storm city",
+    style: "cinematic storm ambience",
+    durationTargetSec: 30,
+    masterDurationSec: 10,
+    mode: "mock",
+    runCommandImpl: async (command, args) => {
+      const outputPath = args[args.length - 1];
+      await fs.promises.mkdir(path.dirname(outputPath), { recursive: true });
+      await fs.promises.writeFile(outputPath, "fake wav");
+    }
+  });
+
+  assert.equal(result.jobDir, jobDir);
+  assert.equal(result.masterAudioPath, artifactPaths.masterAudioPath);
+  assert.equal(fs.existsSync(result.masterAudioPath), true);
+});

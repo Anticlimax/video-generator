@@ -36,6 +36,15 @@ export async function runJob({
   if (!currentJob) {
     throw new Error("job_not_found");
   }
+  const resolvedRootDir = store.rootDir || rootDir;
+  const jobDir = path.join(resolvedRootDir, jobId);
+  const artifactPaths = {
+    masterAudioPath: path.join(jobDir, "master_audio.wav"),
+    coverImagePath: path.join(jobDir, "cover_image.png"),
+    extendedAudioPath: path.join(jobDir, "extended_audio.wav"),
+    loopVideoPath: path.join(jobDir, "loop_video.mp4"),
+    ffprobePath: path.join(jobDir, "ffprobe.json")
+  };
 
   try {
     await store.update(jobId, {
@@ -46,6 +55,8 @@ export async function runJob({
 
     const musicResult = await generateMusicImpl({
       rootDir,
+      jobDir,
+      artifactPaths,
       theme: currentJob.theme,
       style: currentJob.style,
       resolvedTheme,
@@ -74,6 +85,8 @@ export async function runJob({
 
       coverResult = await generateCoverImpl({
         rootDir,
+        jobDir,
+        artifactPaths,
         theme: currentJob.theme,
         style: currentJob.style,
         resolvedTheme,
@@ -99,6 +112,8 @@ export async function runJob({
     const renderResult = await renderVideoImpl({
       rootDir,
       outputRootDir,
+      jobDir,
+      artifactPaths,
       themeId: resolvedTheme?.id || "sleep-piano",
       masterAudioPath: musicResult.masterAudioPath,
       imagePath: coverResult?.imagePath || null,

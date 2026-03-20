@@ -149,6 +149,7 @@ export function createJobStore({
   }
 
   return {
+    rootDir,
     create,
     getById,
     list,

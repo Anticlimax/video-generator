@@ -83,6 +83,8 @@ function normalizeOutputName(value, fallback = "ambient-output") {
 export async function renderVideo({
   rootDir = "jobs",
   outputRootDir = "outputs",
+  jobDir,
+  artifactPaths = {},
   now,
   randomSuffix,
   themeId = "sleep-piano",
@@ -97,11 +99,16 @@ export async function renderVideo({
   const resolvedNow = typeof now === "function" ? now() : now || new Date();
   const job = await createJobWorkspace({
     rootDir,
+    jobDir,
     now: resolvedNow,
     randomSuffix
   });
   const normalizedOutputName = normalizeOutputName(outputName, "ambient-output");
   const finalOutputPath = path.join(outputRootDir, `${normalizedOutputName}.mp4`);
+  const extendedAudioPath =
+    String(artifactPaths.extendedAudioPath || "").trim() || job.extendedAudioPath;
+  const loopVideoPath = String(artifactPaths.loopVideoPath || "").trim() || job.loopVideoPath;
+  const ffprobePath = String(artifactPaths.ffprobePath || "").trim() || job.ffprobePath;
   const durationSec = Number(durationTargetSec || 0);
   const plan = buildRenderPlan({
     themeId,
@@ -109,8 +116,8 @@ export async function renderVideo({
     videoTemplateId
   });
 
-  await ensureParentDir(job.extendedAudioPath);
-  await ensureParentDir(job.loopVideoPath);
+  await ensureParentDir(extendedAudioPath);
+  await ensureParentDir(loopVideoPath);
   await ensureParentDir(finalOutputPath);
 
   await runCommandImpl("ffmpeg", [
@@ -127,7 +134,7 @@ export async function renderVideo({
     "48000",
     "-ac",
     "2",
-    job.extendedAudioPath
+    extendedAudioPath
   ]);
 
   if (imagePath) {
@@ -147,7 +154,7 @@ export async function renderVideo({
       "libx264",
       "-pix_fmt",
       "yuv420p",
-      job.loopVideoPath
+      loopVideoPath
     ]);
   } else {
     await runCommandImpl("ffmpeg", [
@@ -155,7 +162,7 @@ export async function renderVideo({
       ...buildVideoLoopArgs({
         videoTemplateId: plan.video.templateId,
         durationTargetSec: durationSec,
-        outputPath: job.loopVideoPath
+        outputPath: loopVideoPath
       })
     ]);
   }
@@ -163,9 +170,9 @@ export async function renderVideo({
   await runCommandImpl("ffmpeg", [
     "-y",
     "-i",
-    job.loopVideoPath,
+    loopVideoPath,
     "-i",
-    job.extendedAudioPath,
+    extendedAudioPath,
     "-shortest",
     "-c:v",
     "copy",
@@ -175,11 +182,11 @@ export async function renderVideo({
   ]);
 
   const probe = await probeMediaImpl(finalOutputPath);
-  await fs.writeFile(job.ffprobePath, `${JSON.stringify(probe, null, 2)}\n`, "utf8");
+  await fs.writeFile(ffprobePath, `${JSON.stringify(probe, null, 2)}\n`, "utf8");
 
   const fileSizes = {
-    audioBytes: await statSize(job.extendedAudioPath),
-    videoBytes: await statSize(job.loopVideoPath),
+    audioBytes: await statSize(extendedAudioPath),
+    videoBytes: await statSize(loopVideoPath),
     finalBytes: await statSize(finalOutputPath)
   };
 
@@ -187,8 +194,8 @@ export async function renderVideo({
     ok: true,
     jobId: job.jobId,
     jobDir: job.jobDir,
-    audioOutputPath: job.extendedAudioPath,
-    videoOutputPath: job.loopVideoPath,
+    audioOutputPath: extendedAudioPath,
+    videoOutputPath: loopVideoPath,
     finalOutputPath,
     durationSec,
     renderPlan: plan,

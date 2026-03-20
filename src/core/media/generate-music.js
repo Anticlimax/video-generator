@@ -169,6 +169,8 @@ function resolveTargetDurationSec(resolvedTheme, durationTargetSec, allowNonstan
 
 export async function generateMusic({
   rootDir = "jobs",
+  jobDir,
+  artifactPaths = {},
   now,
   randomSuffix,
   theme = "",
@@ -193,9 +195,12 @@ export async function generateMusic({
   const resolvedNow = typeof now === "function" ? now() : now || new Date();
   const job = await createJobWorkspace({
     rootDir,
+    jobDir,
     now: resolvedNow,
     randomSuffix
   });
+  const masterAudioPath =
+    String(artifactPaths.masterAudioPath || "").trim() || job.masterAudioPath;
   const targetDuration = resolveTargetDurationSec(
     resolvedTheme,
     durationTargetSec,
@@ -212,7 +217,7 @@ export async function generateMusic({
     style: String(style || "").trim()
   });
   const normalized = await provider.normalizeResult({
-    path: job.masterAudioPath
+    path: masterAudioPath
   });
 
   if (provider.name === "mock") {
@@ -228,7 +233,7 @@ export async function generateMusic({
       "48000",
       "-ac",
       "2",
-      job.masterAudioPath
+      masterAudioPath
     ]);
   } else if (provider.name === "elevenlabs") {
     if (!fetchImpl) {
@@ -259,7 +264,7 @@ export async function generateMusic({
       "48000",
       "-ac",
       "2",
-      job.masterAudioPath
+      masterAudioPath
     ]);
   } else if (provider.name === "musicgpt") {
     if (!fetchImpl) {
@@ -378,7 +383,7 @@ export async function generateMusic({
       "48000",
       "-ac",
       "2",
-      job.masterAudioPath
+      masterAudioPath
     ]);
   } else {
     throw new Error(`unsupported_music_provider_${provider.name}`);
@@ -392,7 +397,7 @@ export async function generateMusic({
     themeVersion: resolvedTheme?.version || null,
     prompt,
     provider: provider.name,
-    masterAudioPath: job.masterAudioPath,
+    masterAudioPath,
     targetDurationSec: targetDuration,
     masterDurationSec: finalMasterDurationSec,
     audioSpec: normalized.audioSpec

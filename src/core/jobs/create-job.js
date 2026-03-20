@@ -11,7 +11,7 @@ export async function createJob(options = {}) {
   const job = await store.create(input);
   const runPromise = new Promise((resolve) => {
     setTimeout(() => {
-      Promise.resolve(runJobImpl({ jobId: job.id, store }))
+      Promise.resolve(runJobImpl({ jobId: job.id, store, rootDir: store.rootDir || "jobs" }))
         .then(resolve)
         .catch(async (error) => {
           onBackgroundError(error, job);
