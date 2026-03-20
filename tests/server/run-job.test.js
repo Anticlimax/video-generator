@@ -111,6 +111,54 @@ test("runJob marks the job as failed when media generation throws", async () => 
   assert.equal(failed?.errorMessage, "music_provider_failed");
 });
 
+test("runJob falls back to template rendering when cover generation fails", async () => {
+  const rootDir = makeTempDir();
+  const store = createJobStore({
+    rootDir,
+    now: (() => {
+      let tick = 0;
+      return () => new Date(1773993600000 + tick++ * 1000);
+    })(),
+    randomSuffix: (() => {
+      let tick = 0;
+      return () => `c${tick++}x2`;
+    })()
+  });
+
+  const created = await store.create({
+    theme: "storm city",
+    style: "cinematic storm ambience",
+    durationTargetSec: 30,
+    provider: "mock"
+  });
+
+  const completed = await runJob({
+    jobId: created.id,
+    store,
+    generateMusicImpl: async () => ({
+      masterAudioPath: path.join(rootDir, created.id, "master_audio.wav"),
+      masterDurationSec: 30,
+      provider: "mock"
+    }),
+    generateCoverImpl: async () => {
+      throw new Error("cover_provider_unavailable");
+    },
+    renderVideoImpl: async ({ imagePath }) => {
+      assert.equal(imagePath, null);
+      return {
+        finalOutputPath: path.join(rootDir, "outputs", "storm-city.mp4"),
+        ffprobeSummary: { videoStreams: 1, audioStreams: 1 },
+        fileSizes: { finalBytes: 1024 }
+      };
+    }
+  });
+
+  assert.equal(completed?.status, "completed");
+  assert.equal(completed?.stage, "completed");
+  assert.equal(completed?.coverImagePath, null);
+  assert.equal(completed?.finalVideoPath, path.join(rootDir, "outputs", "storm-city.mp4"));
+});
+
 test("createJob schedules async execution and returns the created job immediately", async () => {
   const rootDir = makeTempDir();
   const store = createJobStore({

@@ -79,6 +79,8 @@ export async function runJob({
         resolvedTheme,
         runtimeConfig
       });
+    } catch {
+      coverResult = null;
     } finally {
       await store.update(jobId, {
         status: "running",
