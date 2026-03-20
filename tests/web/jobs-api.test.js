@@ -70,6 +70,56 @@ test("jobs api creates a job and returns the created record", async () => {
   assert.equal(createdJobs[0].coverPrompt, "cinematic thunderstorm poster art");
 });
 
+test("jobs api forwards runtime config into job creation", async () => {
+  const store = {
+    create: async (input) => ({
+      id: "job_20260321_080000_env1",
+      theme: input.theme,
+      style: input.style,
+      durationTargetSec: input.durationTargetSec,
+      provider: input.provider || "musicgpt",
+      status: "queued",
+      stage: "queued",
+      progress: 0,
+      createdAt: "2026-03-21T08:00:00.000Z",
+      updatedAt: "2026-03-21T08:00:00.000Z"
+    }),
+    list: async () => [],
+    getById: async () => null
+  };
+
+  let receivedRuntimeConfig = null;
+  const api = createJobsApiHandlers({
+    store,
+    runtimeConfig: {
+      geminiApiKey: "gem-key",
+      musicGptApiKey: "music-key",
+      elevenLabsApiKey: "eleven-key"
+    },
+    createJobImpl: async ({ store: injectedStore, input, runtimeConfig }) => {
+      receivedRuntimeConfig = runtimeConfig;
+      const job = await injectedStore.create(input);
+      return { job, runPromise: Promise.resolve(job) };
+    }
+  });
+
+  const response = await api.post(
+    buildJsonRequest("http://localhost/api/jobs", {
+      theme: "storm city",
+      style: "cinematic storm ambience",
+      durationTargetSec: 30,
+      provider: "musicgpt"
+    })
+  );
+
+  assert.equal(response.status, 202);
+  assert.deepEqual(receivedRuntimeConfig, {
+    geminiApiKey: "gem-key",
+    musicGptApiKey: "music-key",
+    elevenLabsApiKey: "eleven-key"
+  });
+});
+
 test("jobs api lists jobs newest first", async () => {
   const store = {
     create: async () => {

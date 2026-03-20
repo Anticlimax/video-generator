@@ -86,6 +86,7 @@ function getJobIdFromRequest(request, context = {}) {
 
 export function createJobsApiHandlers({
   store,
+  runtimeConfig = {},
   createJobImpl = createJob
 } = {}) {
   if (!store) {
@@ -109,7 +110,7 @@ export function createJobsApiHandlers({
       }
 
       try {
-        const created = await createJobImpl({ store, input });
+        const created = await createJobImpl({ store, input, runtimeConfig });
         return Response.json({ job: created.job }, { status: 202 });
       } catch (error) {
         return jsonError(String(error?.message || "job_create_failed"), 500);
