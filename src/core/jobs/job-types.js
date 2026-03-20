@@ -6,6 +6,8 @@ export const JOB_STAGES = Object.freeze([
   "music_ready",
   "cover_generating",
   "cover_ready",
+  "motion_generating",
+  "motion_ready",
   "video_rendering",
   "youtube_uploading",
   "completed",
@@ -15,6 +17,7 @@ export const JOB_STAGES = Object.freeze([
 const DEFAULT_ARTIFACT_FIELDS = Object.freeze({
   videoImagePath: null,
   coverImagePath: null,
+  motionVideoPath: null,
   masterAudioPath: null,
   finalVideoPath: null,
   youtubeUrl: null,
@@ -73,6 +76,7 @@ function normalizeArtifacts(record = {}) {
   return {
     videoImagePath: normalizeOptionalText(record.videoImagePath),
     coverImagePath: normalizeOptionalText(record.coverImagePath),
+    motionVideoPath: normalizeOptionalText(record.motionVideoPath),
     masterAudioPath: normalizeOptionalText(record.masterAudioPath),
     finalVideoPath: normalizeOptionalText(record.finalVideoPath),
     youtubeUrl: normalizeOptionalText(record.youtubeUrl),
@@ -105,6 +109,7 @@ export function createJobRecord(input = {}) {
     publishToYouTube: Boolean(input.publishToYouTube),
     videoVisualPrompt: normalizeOptionalText(input.videoVisualPrompt),
     generateSeparateCover: Boolean(input.generateSeparateCover),
+    generateMotionVideo: Boolean(input.generateMotionVideo),
     coverPrompt: normalizeOptionalText(input.coverPrompt),
     status,
     stage,
@@ -139,6 +144,10 @@ export function mergeJobRecord(existing, patch = {}, nowIso) {
       restPatch.coverImagePath !== undefined
         ? normalizeOptionalText(restPatch.coverImagePath)
         : existing.coverImagePath,
+    motionVideoPath:
+      restPatch.motionVideoPath !== undefined
+        ? normalizeOptionalText(restPatch.motionVideoPath)
+        : existing.motionVideoPath,
     finalVideoPath:
       restPatch.finalVideoPath !== undefined
         ? normalizeOptionalText(restPatch.finalVideoPath)
@@ -159,6 +168,10 @@ export function mergeJobRecord(existing, patch = {}, nowIso) {
       restPatch.generateSeparateCover !== undefined
         ? Boolean(restPatch.generateSeparateCover)
         : existing.generateSeparateCover,
+    generateMotionVideo:
+      restPatch.generateMotionVideo !== undefined
+        ? Boolean(restPatch.generateMotionVideo)
+        : existing.generateMotionVideo,
     coverPrompt:
       restPatch.coverPrompt !== undefined
         ? normalizeOptionalText(restPatch.coverPrompt)

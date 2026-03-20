@@ -19,12 +19,14 @@ type JobRecord = {
   provider?: string | null;
   videoImagePath?: string | null;
   coverImagePath?: string | null;
+  motionVideoPath?: string | null;
   masterAudioPath?: string | null;
   finalVideoPath?: string | null;
   youtubeUrl?: string | null;
   youtubeVideoId?: string | null;
   videoVisualPrompt?: string | null;
   generateSeparateCover?: boolean;
+  generateMotionVideo?: boolean;
   coverPrompt?: string | null;
 };
 

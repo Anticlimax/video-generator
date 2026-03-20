@@ -212,6 +212,117 @@ test("runJob falls back to template rendering when cover generation fails", asyn
   assert.equal(completed?.finalVideoPath, path.join(rootDir, "outputs", "storm-city.mp4"));
 });
 
+test("runJob can generate a motion video and pass it into the renderer", async () => {
+  const rootDir = makeTempDir();
+  const store = createJobStore({
+    rootDir,
+    now: (() => {
+      let tick = 0;
+      return () => new Date(1773993600000 + tick++ * 1000);
+    })(),
+    randomSuffix: (() => {
+      let tick = 0;
+      return () => `mv${tick++}x4`;
+    })()
+  });
+
+  const created = await store.create({
+    theme: "storm city",
+    style: "cinematic storm ambience",
+    durationTargetSec: 30,
+    provider: "mock",
+    generateMotionVideo: true
+  });
+
+  const motionCalls = [];
+
+  const completed = await runJob({
+    jobId: created.id,
+    store,
+    generateMusicImpl: async () => ({
+      masterAudioPath: path.join(rootDir, created.id, "master_audio.wav"),
+      masterDurationSec: 30,
+      provider: "mock"
+    }),
+    generateCoverImpl: async () => ({
+      imagePath: path.join(rootDir, created.id, "video_image.png")
+    }),
+    generateMotionVideoImpl: async ({ imagePath, prompt }) => {
+      motionCalls.push({ imagePath, prompt });
+      return {
+        motionVideoPath: path.join(rootDir, created.id, "motion_video.mp4"),
+        provider: "runway",
+        taskId: "task-123"
+      };
+    },
+    renderVideoImpl: async ({ motionVideoPath }) => {
+      assert.equal(motionVideoPath, path.join(rootDir, created.id, "motion_video.mp4"));
+      return {
+        finalOutputPath: path.join(rootDir, "outputs", "storm-city.mp4"),
+        ffprobeSummary: { videoStreams: 1, audioStreams: 1 },
+        fileSizes: { finalBytes: 1024 }
+      };
+    }
+  });
+
+  assert.equal(completed.status, "completed");
+  assert.equal(completed.motionVideoPath, path.join(rootDir, created.id, "motion_video.mp4"));
+  assert.equal(motionCalls.length, 1);
+  assert.equal(motionCalls[0].imagePath, path.join(rootDir, created.id, "video_image.png"));
+});
+
+test("runJob keeps running when motion generation fails and renders the static image", async () => {
+  const rootDir = makeTempDir();
+  const store = createJobStore({
+    rootDir,
+    now: (() => {
+      let tick = 0;
+      return () => new Date(1773993600000 + tick++ * 1000);
+    })(),
+    randomSuffix: (() => {
+      let tick = 0;
+      return () => `mv${tick++}x5`;
+    })()
+  });
+
+  const created = await store.create({
+    theme: "storm city",
+    style: "cinematic storm ambience",
+    durationTargetSec: 30,
+    provider: "mock",
+    generateMotionVideo: true
+  });
+
+  const completed = await runJob({
+    jobId: created.id,
+    store,
+    generateMusicImpl: async () => ({
+      masterAudioPath: path.join(rootDir, created.id, "master_audio.wav"),
+      masterDurationSec: 30,
+      provider: "mock"
+    }),
+    generateCoverImpl: async () => ({
+      imagePath: path.join(rootDir, created.id, "video_image.png")
+    }),
+    generateMotionVideoImpl: async () => {
+      throw new Error("runway_unavailable");
+    },
+    renderVideoImpl: async ({ motionVideoPath, imagePath }) => {
+      assert.equal(motionVideoPath, null);
+      assert.equal(imagePath, path.join(rootDir, created.id, "video_image.png"));
+      return {
+        finalOutputPath: path.join(rootDir, "outputs", "storm-city.mp4"),
+        ffprobeSummary: { videoStreams: 1, audioStreams: 1 },
+        fileSizes: { finalBytes: 1024 }
+      };
+    }
+  });
+
+  assert.equal(completed.status, "completed");
+  assert.equal(completed.motionVideoPath, null);
+  assert.equal(completed.finalVideoPath, path.join(rootDir, "outputs", "storm-city.mp4"));
+});
+
 test("runJob uses a separate cover prompt when requested", async () => {
   const rootDir = makeTempDir();
   const store = createJobStore({

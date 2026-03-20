@@ -90,6 +90,7 @@ export async function renderVideo({
   themeId = "sleep-piano",
   masterAudioPath,
   imagePath,
+  motionVideoPath,
   durationTargetSec,
   videoTemplateId = "default-black",
   outputName = "ambient-output",
@@ -137,7 +138,27 @@ export async function renderVideo({
     extendedAudioPath
   ]);
 
-  if (imagePath) {
+  if (motionVideoPath) {
+    await runCommandImpl("ffmpeg", [
+      "-y",
+      "-stream_loop",
+      "-1",
+      "-i",
+      String(motionVideoPath),
+      "-t",
+      String(durationSec),
+      "-vf",
+      "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,format=yuv420p",
+      "-r",
+      "24",
+      "-c:v",
+      "libx264",
+      "-pix_fmt",
+      "yuv420p",
+      "-an",
+      loopVideoPath
+    ]);
+  } else if (imagePath) {
     await runCommandImpl("ffmpeg", [
       "-y",
       "-loop",
@@ -196,6 +217,7 @@ export async function renderVideo({
     jobDir: job.jobDir,
     audioOutputPath: extendedAudioPath,
     videoOutputPath: loopVideoPath,
+    motionVideoPath: motionVideoPath || null,
     finalOutputPath,
     durationSec,
     renderPlan: plan,

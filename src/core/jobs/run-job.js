@@ -2,6 +2,7 @@ import path from "node:path";
 
 import { generateMusic } from "../media/generate-music.js";
 import { generateCover } from "../media/generate-cover.js";
+import { generateMotionVideo } from "../media/generate-motion-video.js";
 import { renderVideo } from "../media/render-video.js";
 import { publishVideo } from "../publish/youtube.js";
 
@@ -29,6 +30,7 @@ export async function runJob({
   runtimeConfig = {},
   generateMusicImpl = generateMusic,
   generateCoverImpl = generateCover,
+  generateMotionVideoImpl = generateMotionVideo,
   renderVideoImpl = renderVideo,
   publishVideoImpl = publishVideo
 } = {}) {
@@ -42,6 +44,7 @@ export async function runJob({
     masterAudioPath: path.join(jobDir, "master_audio.wav"),
     videoImagePath: path.join(jobDir, "video_image.png"),
     coverImagePath: path.join(jobDir, "cover_image.png"),
+    motionVideoPath: path.join(jobDir, "motion_video.mp4"),
     extendedAudioPath: path.join(jobDir, "extended_audio.wav"),
     loopVideoPath: path.join(jobDir, "loop_video.mp4"),
     ffprobePath: path.join(jobDir, "ffprobe.json")
@@ -78,6 +81,7 @@ export async function runJob({
 
     let videoImageResult = null;
     let coverResult = null;
+    let motionVideoResult = null;
     try {
       await store.update(jobId, {
         status: "running",
@@ -110,12 +114,47 @@ export async function runJob({
       });
     }
 
+    if (currentJob.generateMotionVideo && videoImageResult?.imagePath) {
+      try {
+        await store.update(jobId, {
+          status: "running",
+          stage: "motion_generating",
+          progress: 74
+        });
+
+        motionVideoResult = await generateMotionVideoImpl({
+          rootDir,
+          jobDir,
+          artifactPaths: {
+            ...artifactPaths,
+            motionVideoPath: artifactPaths.motionVideoPath
+          },
+          imagePath: videoImageResult.imagePath,
+          theme: currentJob.theme,
+          style: currentJob.style,
+          videoVisualPrompt: currentJob.videoVisualPrompt || "",
+          resolvedTheme,
+          durationSec: 5,
+          runtimeConfig
+        });
+      } catch {
+        motionVideoResult = null;
+      } finally {
+        await store.update(jobId, {
+          status: "running",
+          stage: "motion_ready",
+          progress: 80,
+          motionVideoPath: motionVideoResult?.motionVideoPath || null
+        });
+      }
+    }
+
     if (currentJob.generateSeparateCover) {
       try {
         await store.update(jobId, {
           status: "running",
           stage: "cover_generating",
-          progress: 75
+          progress: currentJob.generateMotionVideo ? 82 : 75
         });
 
         coverResult = await generateCoverImpl({
@@ -137,7 +176,7 @@ export async function runJob({
         await store.update(jobId, {
           status: "running",
           stage: "cover_ready",
-          progress: 80,
+          progress: currentJob.generateMotionVideo ? 86 : 80,
           coverImagePath: coverResult?.imagePath || videoImageResult?.imagePath || null
         });
       }
@@ -159,6 +198,7 @@ export async function runJob({
       themeId: resolvedTheme?.id || "sleep-piano",
       masterAudioPath: musicResult.masterAudioPath,
       imagePath: videoImageResult?.imagePath || null,
+      motionVideoPath: motionVideoResult?.motionVideoPath || null,
       durationTargetSec: currentJob.durationTargetSec,
       videoTemplateId: resolvedTheme?.video_template_id || "default-black",
       outputName: buildOutputName(currentJob)
@@ -170,6 +210,7 @@ export async function runJob({
       progress: 100,
       videoImagePath: videoImageResult?.imagePath || null,
       coverImagePath: finalCoverImagePath,
+      motionVideoPath: motionVideoResult?.motionVideoPath || null,
       finalVideoPath: renderResult.finalOutputPath,
       youtubeUrl: null,
       youtubeVideoId: null,
@@ -202,6 +243,7 @@ export async function runJob({
         progress: 100,
         videoImagePath: videoImageResult?.imagePath || null,
         coverImagePath: finalCoverImagePath,
+        motionVideoPath: motionVideoResult?.motionVideoPath || null,
         finalVideoPath: renderResult.finalOutputPath,
         youtubeUrl: publishResult.url || null,
         youtubeVideoId: publishResult.videoId || null,
@@ -215,6 +257,7 @@ export async function runJob({
         progress: 100,
         videoImagePath: videoImageResult?.imagePath || null,
         coverImagePath: finalCoverImagePath,
+        motionVideoPath: motionVideoResult?.motionVideoPath || null,
         finalVideoPath: renderResult.finalOutputPath,
         youtubeUrl: null,
         youtubeVideoId: null,

@@ -22,6 +22,8 @@ test("job store exposes the supported statuses and stages", () => {
     "music_ready",
     "cover_generating",
     "cover_ready",
+    "motion_generating",
+    "motion_ready",
     "video_rendering",
     "youtube_uploading",
     "completed",
@@ -66,19 +68,25 @@ test("job store can create, read, list, and update jobs", async () => {
     stage: "music_generating",
     status: "running",
     progress: 25,
-    masterAudioPath: "/tmp/master_audio.wav"
+    masterAudioPath: "/tmp/master_audio.wav",
+    generateMotionVideo: true,
+    motionVideoPath: "/tmp/motion_video.mp4"
   });
 
   assert.equal(updated.stage, "music_generating");
   assert.equal(updated.status, "running");
   assert.equal(updated.progress, 25);
   assert.equal(updated.masterAudioPath, "/tmp/master_audio.wav");
+  assert.equal(updated.generateMotionVideo, true);
+  assert.equal(updated.motionVideoPath, "/tmp/motion_video.mp4");
 
   const reloaded = await store.getById(created.id);
   assert.equal(reloaded?.stage, "music_generating");
   assert.equal(reloaded?.status, "running");
   assert.equal(reloaded?.progress, 25);
   assert.equal(reloaded?.masterAudioPath, "/tmp/master_audio.wav");
+  assert.equal(reloaded?.generateMotionVideo, true);
+  assert.equal(reloaded?.motionVideoPath, "/tmp/motion_video.mp4");
 });
 
 test("job store lists newest jobs first", async () => {

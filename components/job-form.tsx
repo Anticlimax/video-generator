@@ -42,6 +42,7 @@ export default function JobForm() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [generateSeparateCover, setGenerateSeparateCover] = useState(false);
+  const [generateMotionVideo, setGenerateMotionVideo] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,6 +57,7 @@ export default function JobForm() {
     const publishToYouTube = formData.get("publishToYouTube") === "on";
     const videoVisualPrompt = String(formData.get("videoVisualPrompt") || "").trim();
     const generateSeparateCoverValue = formData.get("generateSeparateCover") === "on";
+    const generateMotionVideoValue = formData.get("generateMotionVideo") === "on";
     const coverPrompt = String(formData.get("coverPrompt") || "").trim();
 
     try {
@@ -67,6 +69,7 @@ export default function JobForm() {
         publishToYouTube,
         videoVisualPrompt,
         generateSeparateCover: generateSeparateCoverValue,
+        generateMotionVideo: generateMotionVideoValue,
         coverPrompt
       };
 
@@ -144,6 +147,16 @@ export default function JobForm() {
           onChange={(event) => setGenerateSeparateCover(event.target.checked)}
         />
         <span>单独生成封面图</span>
+        </label>
+
+      <label className="job-form__toggle">
+        <input
+          type="checkbox"
+          name="generateMotionVideo"
+          checked={generateMotionVideo}
+          onChange={(event) => setGenerateMotionVideo(event.target.checked)}
+        />
+        <span>生成微动视频</span>
       </label>
 
       {generateSeparateCover ? (

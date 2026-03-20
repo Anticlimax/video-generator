@@ -27,6 +27,7 @@ test("job form exposes the required fields and submits to jobs api", () => {
   assert.match(formSource, /name=["']videoVisualPrompt["']/);
   assert.match(formSource, /name=["']generateSeparateCover["']/);
   assert.match(formSource, /name=["']coverPrompt["']/);
+  assert.match(formSource, /name=["']generateMotionVideo["']/);
   assert.match(formSource, /type=["']submit["']/);
   assert.match(formSource, /\/api\/jobs/);
 });

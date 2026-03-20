@@ -60,6 +60,7 @@ function parseCreateJobInput(body = {}) {
     generateSeparateCover: parseBoolean(
       body.generateSeparateCover ?? body.generate_separate_cover ?? false
     ),
+    generateMotionVideo: parseBoolean(body.generateMotionVideo ?? body.generate_motion_video ?? false),
     coverPrompt: toTrimmedString(body.coverPrompt ?? body.cover_prompt) || undefined,
     videoTemplateId: toTrimmedString(body.videoTemplateId || body.video_template_id) || undefined,
     outputName: toTrimmedString(body.outputName || body.output_name) || undefined,

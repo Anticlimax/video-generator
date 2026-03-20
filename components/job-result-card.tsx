@@ -3,6 +3,7 @@ type JobResultCardProps = {
     id: string;
     videoImagePath?: string | null;
     coverImagePath?: string | null;
+    motionVideoPath?: string | null;
     masterAudioPath?: string | null;
     finalVideoPath?: string | null;
     youtubeUrl?: string | null;
@@ -28,6 +29,7 @@ function ResultRow({ label, value }: { label: string; value: string | null | und
 export default function JobResultCard({ job }: JobResultCardProps) {
   const videoImageUrl = job.videoImagePath ? `/api/jobs/${job.id}/artifacts/video-image` : null;
   const coverUrl = job.coverImagePath ? `/api/jobs/${job.id}/artifacts/cover` : null;
+  const motionVideoUrl = job.motionVideoPath ? `/api/jobs/${job.id}/artifacts/motion-video` : null;
   const videoUrl = job.finalVideoPath ? `/api/jobs/${job.id}/artifacts/video` : null;
   const coverReusesVideoImage = Boolean(job.videoImagePath && job.coverImagePath && job.videoImagePath === job.coverImagePath);
 
@@ -54,6 +56,18 @@ export default function JobResultCard({ job }: JobResultCardProps) {
         </div>
       ) : null}
 
+      {motionVideoUrl ? (
+        <div className="job-preview">
+          <video
+            src={motionVideoUrl}
+            controls
+            preload="metadata"
+            className="job-preview__video"
+          />
+          <p className="job-preview__note">微动视频</p>
+        </div>
+      ) : null}
+
       {videoUrl ? (
         <div className="job-preview">
           <video
@@ -68,6 +82,7 @@ export default function JobResultCard({ job }: JobResultCardProps) {
       <dl className="job-result">
         <ResultRow label="视频画面图" value={job.videoImagePath} />
         <ResultRow label="封面图" value={job.coverImagePath} />
+        <ResultRow label="微动视频" value={job.motionVideoPath} />
         <ResultRow label="Master audio" value={job.masterAudioPath} />
         <ResultRow label="Final video" value={job.finalVideoPath} />
         <ResultRow label="YouTube video id" value={job.youtubeVideoId} />

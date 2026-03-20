@@ -28,11 +28,13 @@ test("job detail page uses status and result components", () => {
   assert.match(resultSource, /video/i);
   assert.match(resultSource, /视频画面图/i);
   assert.match(resultSource, /封面图/i);
+  assert.match(resultSource, /微动视频/i);
   assert.match(resultSource, /复用/i);
   assert.match(resultSource, /<img/i);
   assert.match(resultSource, /<video/i);
   assert.match(resultSource, /artifacts\/video-image/i);
   assert.match(resultSource, /artifacts\/cover/i);
+  assert.match(resultSource, /artifacts\/motion-video/i);
   assert.match(resultSource, /artifacts\/video/i);
   assert.match(artifactRouteSource, /readFile/i);
   assert.match(artifactRouteSource, /content-type/i);

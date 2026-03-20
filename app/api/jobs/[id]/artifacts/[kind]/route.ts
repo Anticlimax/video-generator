@@ -14,6 +14,9 @@ function resolveArtifactPath(job, kind) {
   if (kind === "cover") {
     return job.coverImagePath || null;
   }
+  if (kind === "motion-video") {
+    return job.motionVideoPath || null;
+  }
   if (kind === "video") {
     return job.finalVideoPath || null;
   }
@@ -26,6 +29,9 @@ function resolveContentType(kind, filePath) {
   }
   if (kind === "cover") {
     return "image/png";
+  }
+  if (kind === "motion-video") {
+    return "video/mp4";
   }
   if (kind === "video") {
     return "video/mp4";

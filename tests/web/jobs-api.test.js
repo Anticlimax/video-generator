@@ -54,6 +54,7 @@ test("jobs api creates a job and returns the created record", async () => {
       provider: "musicgpt",
       videoVisualPrompt: "storm clouds over neon towers",
       generateSeparateCover: true,
+      generateMotionVideo: true,
       coverPrompt: "cinematic thunderstorm poster art"
     })
   );
@@ -67,6 +68,7 @@ test("jobs api creates a job and returns the created record", async () => {
   assert.equal(createdJobs[0].masterDurationSec, 20);
   assert.equal(createdJobs[0].videoVisualPrompt, "storm clouds over neon towers");
   assert.equal(createdJobs[0].generateSeparateCover, true);
+  assert.equal(createdJobs[0].generateMotionVideo, true);
   assert.equal(createdJobs[0].coverPrompt, "cinematic thunderstorm poster art");
 });
 
@@ -94,7 +96,8 @@ test("jobs api forwards runtime config into job creation", async () => {
     runtimeConfig: {
       geminiApiKey: "gem-key",
       musicGptApiKey: "music-key",
-      elevenLabsApiKey: "eleven-key"
+      elevenLabsApiKey: "eleven-key",
+      runwayApiKey: "runway-key"
     },
     createJobImpl: async ({ store: injectedStore, input, runtimeConfig }) => {
       receivedRuntimeConfig = runtimeConfig;
@@ -108,7 +111,8 @@ test("jobs api forwards runtime config into job creation", async () => {
       theme: "storm city",
       style: "cinematic storm ambience",
       durationTargetSec: 30,
-      provider: "musicgpt"
+      provider: "musicgpt",
+      generateMotionVideo: true
     })
   );
 
@@ -116,7 +120,8 @@ test("jobs api forwards runtime config into job creation", async () => {
   assert.deepEqual(receivedRuntimeConfig, {
     geminiApiKey: "gem-key",
     musicGptApiKey: "music-key",
-    elevenLabsApiKey: "eleven-key"
+    elevenLabsApiKey: "eleven-key",
+    runwayApiKey: "runway-key"
   });
 });
 
