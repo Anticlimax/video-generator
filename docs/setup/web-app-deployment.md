@@ -20,12 +20,7 @@ The deployment host runs:
 - rendered videos under `outputs/`
 - local media adapters for music, cover generation, video rendering, and optional YouTube publish
 
-The current implementation still reuses two local helper scripts for full output generation:
-
-- `nano-banana-pro` for cover images
-- `youtube-publisher` for YouTube uploads
-
-If the host does not already have those helpers, install them using the legacy OpenClaw helper flow documented in [portable-deployment.md](/Users/liyang/project/video-generate/docs/setup/portable-deployment.md).
+Bundled VFX metadata is documented in [vfx-assets.md](/Users/liyang/project/video-generate/docs/setup/vfx-assets.md). The runtime expects the bundled rain overlay to be mounted under `assets/vfx` unless `VFX_ASSET_ROOT` overrides it.
 
 ## Required Runtime
 
@@ -37,11 +32,24 @@ Install these on the deployment machine:
 - ffmpeg
 - ffprobe
 
+If you want non-mock media providers, also configure:
+
+- `MUSICGPT_API_KEY`
+- `ELEVENLABS_API_KEY`
+- `GEMINI_API_KEY`
+- `RUNWAY_API_KEY`
+- `MOTION_CLIP_DURATION_SEC`
+- `RAIN_VFX_OVERLAY_PATTERN`
+- `RAIN_VFX_START_NUMBER`
+- `RAIN_VFX_OVERLAY_OPACITY`
+- `VFX_ASSET_ROOT`
+
 Recommended operational baseline:
 
 - keep the app behind a VPN, private network, or reverse proxy with access control
 - run it on a machine where local file writes to the repo directory are allowed
 - keep `jobs/` and `outputs/` on persistent storage if you want history to survive restarts
+- mount bundled VFX assets on the host, or set `VFX_ASSET_ROOT` to the directory that contains them
 
 ## Bootstrap
 
@@ -64,6 +72,12 @@ npm run build
 npm run start
 ```
 
+Before launching a new machine or image, run:
+
+```bash
+./scripts/verify-web-runtime.sh
+```
+
 Use a process manager if the machine should recover automatically after reboot.
 
 ## First Deploy Path
@@ -78,7 +92,7 @@ The safest first deploy is:
 
 If you want real music generation, the server side supports `musicgpt` and `elevenlabs`, but the process must be able to reach the corresponding provider credentials before those modes are used.
 
-## Optional Provider And Publish Setup
+## Optional Provider Setup
 
 The current server modules accept these modes and helpers:
 
@@ -86,9 +100,9 @@ The current server modules accept these modes and helpers:
 - `musicgpt`
 - `elevenlabs`
 - `geminiApiKey` for cover generation
-- `youtube-publisher` for publish
+- `runwayApiKey` for image-to-video micro-motion
 
-For publish mode:
+For publish mode, keep the legacy YouTube helper configured on the host:
 
 1. place `client_secret.json` where the local YouTube helper expects it
 2. run the OAuth authorization flow once
@@ -129,8 +143,23 @@ The app writes deterministic artifacts into the repo root:
 
 Back up both `jobs/` and `outputs/` together if you want to preserve generated work.
 
+## VFX Assets
+
+Use the bundled rain overlay asset registry instead of hard-coding paths in deployment notes.
+
+- Registry: [vfx-assets.md](/Users/liyang/project/video-generate/docs/setup/vfx-assets.md)
+- Default asset root: `assets/vfx`
+- Override: `VFX_ASSET_ROOT`
+- Default rain overlay pattern:
+  - `assets/vfx/RainOnGlass-004/RainOnGlass-004.%04d.exr`
+- Default rain overlay start number:
+  - `1001`
+- Default rain overlay opacity:
+  - `0.95`
+
 ## Upgrade Notes
 
 - There is no auth layer yet, so do not expose the app publicly without adding one.
 - The UI and API are ready to host the workflow, but the current media adapters still rely on host-local helper scripts for cover generation and YouTube publish.
+- The deployment host should keep the bundled rain overlay assets available; `./scripts/verify-web-runtime.sh` will fail fast if they are missing.
 - If you later split media generation into a background worker, the job store and API routes can stay as they are.
