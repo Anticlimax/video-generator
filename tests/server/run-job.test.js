@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -321,6 +322,80 @@ test("runJob keeps running when motion generation fails and renders the static i
   assert.equal(completed.status, "completed");
   assert.equal(completed.motionVideoPath, null);
   assert.equal(completed.finalVideoPath, path.join(rootDir, "outputs", "storm-city.mp4"));
+});
+
+test("runJob prefers bundled VFX overlay motion for rain scenes", async () => {
+  const rootDir = makeTempDir();
+  const store = createJobStore({
+    rootDir,
+    now: (() => {
+      let tick = 0;
+      return () => new Date(1773993600000 + tick++ * 1000);
+    })(),
+    randomSuffix: (() => {
+      let tick = 0;
+      return () => `rv${tick++}x7`;
+    })()
+  });
+
+  const created = await store.create({
+    theme: "rainy city",
+    style: "quiet ambient",
+    durationTargetSec: 30,
+    provider: "mock",
+    generateMotionVideo: true
+  });
+
+  const overlayPattern = path.join(rootDir, "assets", "RainOnGlass-004.%04d.exr");
+  await fsp.mkdir(path.dirname(overlayPattern), { recursive: true });
+  await fsp.writeFile(overlayPattern.replace("%04d", "1001"), "fake exr");
+
+  let runwayCalled = false;
+  let vfxCalled = false;
+
+  const completed = await runJob({
+    jobId: created.id,
+    store,
+    runtimeConfig: {
+      rainVfxOverlayPattern: overlayPattern,
+      rainVfxStartNumber: 1001,
+      rainVfxOverlayOpacity: 0.95
+    },
+    generateMusicImpl: async () => ({
+      masterAudioPath: path.join(rootDir, created.id, "master_audio.wav"),
+      masterDurationSec: 30,
+      provider: "mock"
+    }),
+    generateCoverImpl: async () => ({
+      imagePath: path.join(rootDir, created.id, "video_image.png")
+    }),
+    generateMotionVideoImpl: async () => {
+      runwayCalled = true;
+      throw new Error("should_not_call_runway_for_rain");
+    },
+    generateVfxOverlayVideoImpl: async ({ imagePath, overlayPattern: receivedPattern }) => {
+      vfxCalled = true;
+      assert.equal(imagePath, path.join(rootDir, created.id, "video_image.png"));
+      assert.equal(receivedPattern, overlayPattern);
+      return {
+        motionVideoPath: path.join(rootDir, created.id, "motion_video.mp4"),
+        provider: "vfx-overlay"
+      };
+    },
+    renderVideoImpl: async ({ motionVideoPath }) => {
+      assert.equal(motionVideoPath, path.join(rootDir, created.id, "motion_video.mp4"));
+      return {
+        finalOutputPath: path.join(rootDir, "outputs", "rainy-city.mp4"),
+        ffprobeSummary: { videoStreams: 1, audioStreams: 1 },
+        fileSizes: { finalBytes: 1024 }
+      };
+    }
+  });
+
+  assert.equal(vfxCalled, true);
+  assert.equal(runwayCalled, false);
+  assert.equal(completed.status, "completed");
+  assert.equal(completed.motionVideoPath, path.join(rootDir, created.id, "motion_video.mp4"));
 });
 
 test("runJob uses a separate cover prompt when requested", async () => {

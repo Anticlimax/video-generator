@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { createJobWorkspace } from "../../lib/jobs.js";
+import { buildMotionPresetPrompt, resolveMotionPresets } from "./motion-presets.js";
 
 const RUNWAY_API_BASE_URL = "https://api.dev.runwayml.com/v1";
 const RUNWAY_API_VERSION = "2024-11-06";
@@ -62,30 +63,21 @@ async function fetchJson(fetchImpl, url, options, timeoutMs, timeoutLabel) {
 }
 
 function buildRunwayMotionPrompt({ theme = "", style = "", videoVisualPrompt = "", resolvedTheme = null } = {}) {
-  const parts = [
-    "Keep the camera locked. Preserve the original composition.",
-    "Only subtle environmental motion: light rain, cloud drift, faint atmospheric flicker, gentle surface movement.",
-    "No scene transformation. No subject deformation. Loop-friendly."
-  ];
+  const themeText = normalizeText(theme) || normalizeText(resolvedTheme?.label);
+  const styleText = normalizeText(style) || normalizeText(resolvedTheme?.description);
+  const presets = resolveMotionPresets({
+    theme: themeText,
+    style: styleText,
+    videoVisualPrompt
+  });
 
-  const trimmedPrompt = normalizeText(videoVisualPrompt);
-  if (trimmedPrompt) {
-    parts.push(trimmedPrompt);
-  } else if (normalizeText(theme)) {
-    parts.push(`Theme: ${normalizeText(theme)}.`);
-  } else if (resolvedTheme?.label) {
-    parts.push(`Theme family: ${normalizeText(resolvedTheme.label)}.`);
-  }
-
-  if (normalizeText(style)) {
-    parts.push(`Style: ${normalizeText(style)}.`);
-  }
-
-  if (resolvedTheme?.description) {
-    parts.push(`Mood guide: ${normalizeText(resolvedTheme.description)}.`);
-  }
-
-  return parts.join(" ");
+  return buildMotionPresetPrompt({
+    theme: themeText,
+    style: styleText,
+    videoVisualPrompt,
+    primaryPreset: presets.primaryPreset,
+    secondaryPreset: presets.secondaryPreset
+  });
 }
 
 async function createRunwayTask({

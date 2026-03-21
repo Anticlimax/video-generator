@@ -1,8 +1,11 @@
+import fs from "node:fs/promises";
 import path from "node:path";
 
 import { generateMusic } from "../media/generate-music.js";
 import { generateCover } from "../media/generate-cover.js";
 import { generateMotionVideo } from "../media/generate-motion-video.js";
+import { generateVfxOverlayVideo } from "../media/generate-vfx-overlay-video.js";
+import { resolveMotionPresets } from "../media/motion-presets.js";
 import { renderVideo } from "../media/render-video.js";
 import { publishVideo } from "../publish/youtube.js";
 
@@ -21,6 +24,15 @@ function buildOutputName(job) {
   return `${themePart || "ambient"}-${durationPart}`;
 }
 
+async function pathExists(filePath) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function runJob({
   jobId,
   store,
@@ -31,6 +43,7 @@ export async function runJob({
   generateMusicImpl = generateMusic,
   generateCoverImpl = generateCover,
   generateMotionVideoImpl = generateMotionVideo,
+  generateVfxOverlayVideoImpl = generateVfxOverlayVideo,
   renderVideoImpl = renderVideo,
   publishVideoImpl = publishVideo
 } = {}) {
@@ -122,21 +135,48 @@ export async function runJob({
           progress: 74
         });
 
-        motionVideoResult = await generateMotionVideoImpl({
-          rootDir,
-          jobDir,
-          artifactPaths: {
-            ...artifactPaths,
-            motionVideoPath: artifactPaths.motionVideoPath
-          },
-          imagePath: videoImageResult.imagePath,
+        const presets = resolveMotionPresets({
           theme: currentJob.theme,
           style: currentJob.style,
-          videoVisualPrompt: currentJob.videoVisualPrompt || "",
-          resolvedTheme,
-          durationSec: 5,
-          runtimeConfig
+          videoVisualPrompt: currentJob.videoVisualPrompt || ""
         });
+        const rainOverlayPattern = String(runtimeConfig.rainVfxOverlayPattern || "").trim();
+        const canUseRainVfx =
+          presets.primaryPreset === "rain" &&
+          rainOverlayPattern &&
+          (await pathExists(rainOverlayPattern.replace("%04d", String(runtimeConfig.rainVfxStartNumber || 1001).padStart(4, "0"))));
+
+        if (canUseRainVfx) {
+          motionVideoResult = await generateVfxOverlayVideoImpl({
+            rootDir,
+            jobDir,
+            artifactPaths: {
+              ...artifactPaths,
+              motionVideoPath: artifactPaths.motionVideoPath
+            },
+            imagePath: videoImageResult.imagePath,
+            overlayPattern: rainOverlayPattern,
+            startNumber: Number(runtimeConfig.rainVfxStartNumber || 1001),
+            durationSec: Number(runtimeConfig.motionClipDurationSec || 5),
+            overlayOpacity: Number(runtimeConfig.rainVfxOverlayOpacity || 0.95)
+          });
+        } else {
+          motionVideoResult = await generateMotionVideoImpl({
+            rootDir,
+            jobDir,
+            artifactPaths: {
+              ...artifactPaths,
+              motionVideoPath: artifactPaths.motionVideoPath
+            },
+            imagePath: videoImageResult.imagePath,
+            theme: currentJob.theme,
+            style: currentJob.style,
+            videoVisualPrompt: currentJob.videoVisualPrompt || "",
+            resolvedTheme,
+            durationSec: Number(runtimeConfig.motionClipDurationSec || 5),
+            runtimeConfig
+          });
+        }
       } catch {
         motionVideoResult = null;
       } finally {
