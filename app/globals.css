@@ -138,6 +138,28 @@ h1 {
   gap: 18px;
 }
 
+.job-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.job-action {
+  width: fit-content;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--accent-strong);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.job-action:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
 .job-panel__header {
   display: flex;
   justify-content: space-between;

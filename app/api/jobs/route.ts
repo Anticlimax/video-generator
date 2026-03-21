@@ -1,9 +1,14 @@
-import path from "node:path";
-
 import { createJobStore } from "../../../src/core/jobs/job-store.js";
 import { createJobsApiHandlers } from "../../../src/core/jobs/web-api.js";
+import {
+  getDefaultRainOverlayAsset,
+  resolveVfxAssetPattern,
+  resolveVfxAssetRoot
+} from "../../../src/core/media/vfx-assets.js";
 
 const store = createJobStore();
+const defaultRainAsset = getDefaultRainOverlayAsset();
+const vfxAssetRoot = resolveVfxAssetRoot(process.env.VFX_ASSET_ROOT);
 const api = createJobsApiHandlers({
   store,
   runtimeConfig: {
@@ -14,9 +19,12 @@ const api = createJobsApiHandlers({
     motionClipDurationSec: Number(process.env.MOTION_CLIP_DURATION_SEC || 5),
     rainVfxOverlayPattern:
       process.env.RAIN_VFX_OVERLAY_PATTERN ||
-      path.join(process.cwd(), "assets", "vfx", "RainOnGlass-004", "RainOnGlass-004.%04d.exr"),
-    rainVfxStartNumber: Number(process.env.RAIN_VFX_START_NUMBER || 1001),
-    rainVfxOverlayOpacity: Number(process.env.RAIN_VFX_OVERLAY_OPACITY || 0.95)
+      resolveVfxAssetPattern(defaultRainAsset.id, { rootDir: vfxAssetRoot }),
+    rainVfxAssetId: defaultRainAsset.id,
+    rainVfxStartNumber: Number(process.env.RAIN_VFX_START_NUMBER || defaultRainAsset.startNumber || 1001),
+    rainVfxOverlayOpacity: Number(
+      process.env.RAIN_VFX_OVERLAY_OPACITY || defaultRainAsset.recommendedOpacity || 0.95
+    )
   }
 });
 

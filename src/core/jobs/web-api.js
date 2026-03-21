@@ -140,6 +140,38 @@ export function createJobsApiHandlers({
       }
 
       return Response.json({ job }, { status: 200 });
+    },
+
+    async retry(request, context = {}) {
+      const jobId = getJobIdFromRequest(request, context);
+      if (!jobId) {
+        return jsonError("missing_job_id", 400);
+      }
+
+      const existing = await store.getById(jobId);
+      if (!existing) {
+        return jsonError("job_not_found", 404);
+      }
+
+      const input = {
+        theme: existing.theme,
+        style: existing.style,
+        durationTargetSec: existing.durationTargetSec,
+        masterDurationSec: existing.masterDurationSec,
+        provider: existing.provider,
+        publishToYouTube: existing.publishToYouTube,
+        videoVisualPrompt: existing.videoVisualPrompt,
+        generateSeparateCover: existing.generateSeparateCover,
+        generateMotionVideo: existing.generateMotionVideo,
+        coverPrompt: existing.coverPrompt
+      };
+
+      try {
+        const created = await createJobImpl({ store, input, runtimeConfig });
+        return Response.json({ job: created.job }, { status: 202 });
+      } catch (error) {
+        return jsonError(String(error?.message || "job_retry_failed"), 500);
+      }
     }
   };
 }

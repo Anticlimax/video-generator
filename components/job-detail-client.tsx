@@ -24,10 +24,17 @@ type JobRecord = {
   finalVideoPath?: string | null;
   youtubeUrl?: string | null;
   youtubeVideoId?: string | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
   videoVisualPrompt?: string | null;
   generateSeparateCover?: boolean;
   generateMotionVideo?: boolean;
   coverPrompt?: string | null;
+  motionProvider?: string | null;
+  motionPresetPrimary?: string | null;
+  motionPresetSecondary?: string | null;
+  vfxAssetId?: string | null;
+  motionClipDurationSec?: number | null;
 };
 
 type JobDetailClientProps = {
@@ -40,6 +47,7 @@ function isTerminalStatus(status: string) {
 
 export default function JobDetailClient({ initialJob }: JobDetailClientProps) {
   const [job, setJob] = useState(initialJob);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   useEffect(() => {
     if (isTerminalStatus(job.status)) {
@@ -70,6 +78,26 @@ export default function JobDetailClient({ initialJob }: JobDetailClientProps) {
     };
   }, [job.id, job.status]);
 
+  async function handleRetry() {
+    try {
+      setIsRetrying(true);
+      const response = await fetch(`/api/jobs/${job.id}`, {
+        method: "POST"
+      });
+      if (!response.ok) {
+        return;
+      }
+      const payload = await response.json();
+      if (payload?.job) {
+        window.location.href = `/jobs/${payload.job.id}`;
+      }
+    } catch {
+      // keep the current job visible if retry fails
+    } finally {
+      setIsRetrying(false);
+    }
+  }
+
   return (
     <>
       <div className="card card--detail-header">
@@ -81,7 +109,7 @@ export default function JobDetailClient({ initialJob }: JobDetailClientProps) {
         <p className="job-meta">ID: {job.id}</p>
       </div>
 
-      <JobStatusCard job={job} />
+      <JobStatusCard job={job} onRetry={handleRetry} isRetrying={isRetrying} />
       <JobResultCard job={job} />
     </>
   );

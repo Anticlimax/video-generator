@@ -253,7 +253,9 @@ test("runJob can generate a motion video and pass it into the renderer", async (
       return {
         motionVideoPath: path.join(rootDir, created.id, "motion_video.mp4"),
         provider: "runway",
-        taskId: "task-123"
+        taskId: "task-123",
+        primaryPreset: "rain",
+        secondaryPreset: "neon"
       };
     },
     renderVideoImpl: async ({ motionVideoPath }) => {
@@ -268,6 +270,9 @@ test("runJob can generate a motion video and pass it into the renderer", async (
 
   assert.equal(completed.status, "completed");
   assert.equal(completed.motionVideoPath, path.join(rootDir, created.id, "motion_video.mp4"));
+  assert.equal(completed.motionProvider, "runway");
+  assert.equal(completed.motionPresetPrimary, "rain");
+  assert.equal(completed.motionPresetSecondary, "neon");
   assert.equal(motionCalls.length, 1);
   assert.equal(motionCalls[0].imagePath, path.join(rootDir, created.id, "video_image.png"));
 });
@@ -379,7 +384,10 @@ test("runJob prefers bundled VFX overlay motion for rain scenes", async () => {
       assert.equal(receivedPattern, overlayPattern);
       return {
         motionVideoPath: path.join(rootDir, created.id, "motion_video.mp4"),
-        provider: "vfx-overlay"
+        provider: "vfx-overlay",
+        primaryPreset: "rain",
+        secondaryPreset: "neon",
+        assetId: "rain-on-glass-004"
       };
     },
     renderVideoImpl: async ({ motionVideoPath }) => {
@@ -396,6 +404,11 @@ test("runJob prefers bundled VFX overlay motion for rain scenes", async () => {
   assert.equal(runwayCalled, false);
   assert.equal(completed.status, "completed");
   assert.equal(completed.motionVideoPath, path.join(rootDir, created.id, "motion_video.mp4"));
+  assert.equal(completed.motionProvider, "vfx-overlay");
+  assert.equal(completed.motionPresetPrimary, "rain");
+  assert.equal(completed.motionPresetSecondary, "neon");
+  assert.equal(completed.vfxAssetId, "rain-on-glass-004");
+  assert.equal(completed.motionClipDurationSec, 5);
 });
 
 test("runJob uses a separate cover prompt when requested", async () => {

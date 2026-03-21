@@ -7,3 +7,7 @@ const api = createJobsApiHandlers({ store });
 export async function GET(request: Request, context: { params: { id: string } }) {
   return api.getById(request, context);
 }
+
+export async function POST(request: Request, context: { params: { id: string } }) {
+  return api.retry(request, context);
+}

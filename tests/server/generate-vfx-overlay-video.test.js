@@ -41,6 +41,7 @@ test("generateVfxOverlayVideo composites an EXR overlay sequence over a still im
 
   assert.equal(result.ok, true);
   assert.equal(result.motionVideoPath, path.join(jobDir, "motion_video.mp4"));
+  assert.equal(result.provider, "vfx-overlay");
   assert.equal(fs.existsSync(result.motionVideoPath), true);
   assert.equal(commands.length, 1);
   assert.equal(commands[0].command, "ffmpeg");

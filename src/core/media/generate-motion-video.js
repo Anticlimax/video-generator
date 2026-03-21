@@ -215,6 +215,11 @@ export async function generateMotionVideo({
     videoVisualPrompt,
     resolvedTheme
   });
+  const presets = resolveMotionPresets({
+    theme,
+    style,
+    videoVisualPrompt
+  });
   const requestTimeoutMs = Number(runtimeConfig.runwayRequestTimeoutMs || 60000);
   const pollDelayMs = Number(runtimeConfig.runwayPollDelayMs || 5000);
   const apiKey = runtimeConfig.runwayApiKey;
@@ -261,6 +266,8 @@ export async function generateMotionVideo({
         jobDir: job.jobDir,
         motionVideoPath,
         provider: "runway",
+        primaryPreset: presets.primaryPreset,
+        secondaryPreset: presets.secondaryPreset,
         taskId,
         prompt: promptText
       };

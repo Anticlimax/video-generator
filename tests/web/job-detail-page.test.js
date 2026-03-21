@@ -22,10 +22,17 @@ test("job detail page uses status and result components", () => {
   assert.match(pageSource, /<JobDetailClient\b/);
   assert.match(clientSource, /setInterval/i);
   assert.match(clientSource, /fetch\(/i);
+  assert.match(clientSource, /retry/i);
   assert.match(statusSource, /stage/i);
   assert.match(statusSource, /progress/i);
+  assert.match(statusSource, /motion/i);
+  assert.match(statusSource, /preset/i);
+  assert.match(statusSource, /VFX/i);
   assert.match(resultSource, /cover/i);
   assert.match(resultSource, /video/i);
+  assert.match(resultSource, /error/i);
+  assert.match(resultSource, /motion provider/i);
+  assert.match(resultSource, /VFX asset/i);
   assert.match(resultSource, /视频画面图/i);
   assert.match(resultSource, /封面图/i);
   assert.match(resultSource, /微动视频/i);

@@ -181,3 +181,71 @@ test("jobs api returns 404 for a missing job", async () => {
   const payload = await response.json();
   assert.equal(payload.error, "job_not_found");
 });
+
+test("jobs api retries a job by cloning its original settings into a new queued job", async () => {
+  const createdInputs = [];
+  const existingJob = {
+    id: "job_old",
+    theme: "storm city",
+    style: "cinematic storm ambience",
+    durationTargetSec: 30,
+    masterDurationSec: 20,
+    provider: "musicgpt",
+    publishToYouTube: true,
+    videoVisualPrompt: "storm clouds over neon towers",
+    generateSeparateCover: true,
+    generateMotionVideo: true,
+    coverPrompt: "cinematic thunderstorm poster art",
+    status: "failed",
+    stage: "failed",
+    progress: 100,
+    createdAt: "2026-03-20T08:00:00.000Z",
+    updatedAt: "2026-03-20T08:01:00.000Z"
+  };
+  const store = {
+    create: async (input) => {
+      createdInputs.push(input);
+      return {
+        ...existingJob,
+        ...input,
+        id: "job_new",
+        status: "queued",
+        stage: "queued",
+        progress: 0,
+        createdAt: "2026-03-20T08:02:00.000Z",
+        updatedAt: "2026-03-20T08:02:00.000Z"
+      };
+    },
+    list: async () => [],
+    getById: async (jobId) => (jobId === "job_old" ? existingJob : null)
+  };
+
+  const api = createJobsApiHandlers({
+    store,
+    createJobImpl: async ({ store: injectedStore, input }) => {
+      const job = await injectedStore.create(input);
+      return { job, runPromise: Promise.resolve(job) };
+    }
+  });
+
+  const response = await api.retry(new Request("http://localhost/api/jobs/job_old/retry", { method: "POST" }), {
+    params: { id: "job_old" }
+  });
+
+  assert.equal(response.status, 202);
+  const payload = await response.json();
+  assert.equal(payload.job.id, "job_new");
+  assert.equal(createdInputs.length, 1);
+  assert.deepEqual(createdInputs[0], {
+    theme: "storm city",
+    style: "cinematic storm ambience",
+    durationTargetSec: 30,
+    masterDurationSec: 20,
+    provider: "musicgpt",
+    publishToYouTube: true,
+    videoVisualPrompt: "storm clouds over neon towers",
+    generateSeparateCover: true,
+    generateMotionVideo: true,
+    coverPrompt: "cinematic thunderstorm poster art"
+  });
+});

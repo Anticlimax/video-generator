@@ -128,6 +128,7 @@ export async function runJob({
     }
 
     if (currentJob.generateMotionVideo && videoImageResult?.imagePath) {
+      const motionClipDurationSec = Number(runtimeConfig.motionClipDurationSec || 5);
       try {
         await store.update(jobId, {
           status: "running",
@@ -156,8 +157,11 @@ export async function runJob({
             },
             imagePath: videoImageResult.imagePath,
             overlayPattern: rainOverlayPattern,
+            assetId: String(runtimeConfig.rainVfxAssetId || "").trim() || "rain-on-glass-004",
+            primaryPreset: presets.primaryPreset,
+            secondaryPreset: presets.secondaryPreset,
             startNumber: Number(runtimeConfig.rainVfxStartNumber || 1001),
-            durationSec: Number(runtimeConfig.motionClipDurationSec || 5),
+            durationSec: motionClipDurationSec,
             overlayOpacity: Number(runtimeConfig.rainVfxOverlayOpacity || 0.95)
           });
         } else {
@@ -173,7 +177,7 @@ export async function runJob({
             style: currentJob.style,
             videoVisualPrompt: currentJob.videoVisualPrompt || "",
             resolvedTheme,
-            durationSec: Number(runtimeConfig.motionClipDurationSec || 5),
+            durationSec: motionClipDurationSec,
             runtimeConfig
           });
         }
@@ -184,7 +188,12 @@ export async function runJob({
           status: "running",
           stage: "motion_ready",
           progress: 80,
-          motionVideoPath: motionVideoResult?.motionVideoPath || null
+          motionVideoPath: motionVideoResult?.motionVideoPath || null,
+          motionProvider: motionVideoResult?.provider || null,
+          motionPresetPrimary: motionVideoResult?.primaryPreset || null,
+          motionPresetSecondary: motionVideoResult?.secondaryPreset || null,
+          vfxAssetId: motionVideoResult?.assetId || null,
+          motionClipDurationSec: motionVideoResult?.motionVideoPath ? motionClipDurationSec : null
         });
       }
     }

@@ -29,6 +29,14 @@ const DEFAULT_ERROR_FIELDS = Object.freeze({
   errorMessage: null
 });
 
+const DEFAULT_MOTION_FIELDS = Object.freeze({
+  motionProvider: null,
+  motionPresetPrimary: null,
+  motionPresetSecondary: null,
+  vfxAssetId: null,
+  motionClipDurationSec: null
+});
+
 function assertValidEnum(value, validValues, label) {
   if (!validValues.includes(value)) {
     throw new Error(`invalid_${label}`);
@@ -84,6 +92,16 @@ function normalizeArtifacts(record = {}) {
   };
 }
 
+function normalizeMotionFields(record = {}) {
+  return {
+    motionProvider: normalizeOptionalText(record.motionProvider),
+    motionPresetPrimary: normalizeOptionalText(record.motionPresetPrimary),
+    motionPresetSecondary: normalizeOptionalText(record.motionPresetSecondary),
+    vfxAssetId: normalizeOptionalText(record.vfxAssetId),
+    motionClipDurationSec: normalizeOptionalNumber(record.motionClipDurationSec)
+  };
+}
+
 export function createJobRecord(input = {}) {
   const id = normalizeText(input.id, "id");
   const theme = normalizeText(input.theme, "theme");
@@ -118,6 +136,8 @@ export function createJobRecord(input = {}) {
     updatedAt,
     ...DEFAULT_ARTIFACT_FIELDS,
     ...normalizeArtifacts(input),
+    ...DEFAULT_MOTION_FIELDS,
+    ...normalizeMotionFields(input),
     ...DEFAULT_ERROR_FIELDS,
     errorCode: normalizeOptionalText(input.errorCode),
     errorMessage: normalizeOptionalText(input.errorMessage)
@@ -148,6 +168,26 @@ export function mergeJobRecord(existing, patch = {}, nowIso) {
       restPatch.motionVideoPath !== undefined
         ? normalizeOptionalText(restPatch.motionVideoPath)
         : existing.motionVideoPath,
+    motionProvider:
+      restPatch.motionProvider !== undefined
+        ? normalizeOptionalText(restPatch.motionProvider)
+        : existing.motionProvider,
+    motionPresetPrimary:
+      restPatch.motionPresetPrimary !== undefined
+        ? normalizeOptionalText(restPatch.motionPresetPrimary)
+        : existing.motionPresetPrimary,
+    motionPresetSecondary:
+      restPatch.motionPresetSecondary !== undefined
+        ? normalizeOptionalText(restPatch.motionPresetSecondary)
+        : existing.motionPresetSecondary,
+    vfxAssetId:
+      restPatch.vfxAssetId !== undefined
+        ? normalizeOptionalText(restPatch.vfxAssetId)
+        : existing.vfxAssetId,
+    motionClipDurationSec:
+      restPatch.motionClipDurationSec !== undefined
+        ? normalizeOptionalNumber(restPatch.motionClipDurationSec)
+        : existing.motionClipDurationSec,
     finalVideoPath:
       restPatch.finalVideoPath !== undefined
         ? normalizeOptionalText(restPatch.finalVideoPath)

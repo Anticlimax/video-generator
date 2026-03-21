@@ -8,6 +8,12 @@ type JobResultCardProps = {
     finalVideoPath?: string | null;
     youtubeUrl?: string | null;
     youtubeVideoId?: string | null;
+    errorCode?: string | null;
+    errorMessage?: string | null;
+    motionProvider?: string | null;
+    motionPresetPrimary?: string | null;
+    motionPresetSecondary?: string | null;
+    vfxAssetId?: string | null;
   };
 };
 
@@ -32,6 +38,7 @@ export default function JobResultCard({ job }: JobResultCardProps) {
   const motionVideoUrl = job.motionVideoPath ? `/api/jobs/${job.id}/artifacts/motion-video` : null;
   const videoUrl = job.finalVideoPath ? `/api/jobs/${job.id}/artifacts/video` : null;
   const coverReusesVideoImage = Boolean(job.videoImagePath && job.coverImagePath && job.videoImagePath === job.coverImagePath);
+  const motionPreset = [job.motionPresetPrimary, job.motionPresetSecondary].filter(Boolean).join(" + ");
 
   return (
     <section className="card job-panel">
@@ -80,12 +87,17 @@ export default function JobResultCard({ job }: JobResultCardProps) {
       ) : null}
 
       <dl className="job-result">
+        <ResultRow label="Motion provider" value={job.motionProvider} />
+        <ResultRow label="Motion preset" value={motionPreset || null} />
+        <ResultRow label="VFX asset" value={job.vfxAssetId} />
         <ResultRow label="视频画面图" value={job.videoImagePath} />
         <ResultRow label="封面图" value={job.coverImagePath} />
         <ResultRow label="微动视频" value={job.motionVideoPath} />
         <ResultRow label="Master audio" value={job.masterAudioPath} />
         <ResultRow label="Final video" value={job.finalVideoPath} />
         <ResultRow label="YouTube video id" value={job.youtubeVideoId} />
+        <ResultRow label="Error code" value={job.errorCode} />
+        <ResultRow label="Error message" value={job.errorMessage} />
       </dl>
 
       {job.youtubeUrl ? (

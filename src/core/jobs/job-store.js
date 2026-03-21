@@ -36,7 +36,12 @@ function mapArtifactsToTopLevel(input = {}) {
     masterAudioPath: input.masterAudioPath ?? artifacts.masterAudioPath,
     finalVideoPath: input.finalVideoPath ?? artifacts.finalVideoPath,
     youtubeUrl: input.youtubeUrl ?? artifacts.youtubeUrl,
-    youtubeVideoId: input.youtubeVideoId ?? artifacts.youtubeVideoId
+    youtubeVideoId: input.youtubeVideoId ?? artifacts.youtubeVideoId,
+    motionProvider: input.motionProvider ?? artifacts.motionProvider,
+    motionPresetPrimary: input.motionPresetPrimary ?? artifacts.motionPresetPrimary,
+    motionPresetSecondary: input.motionPresetSecondary ?? artifacts.motionPresetSecondary,
+    vfxAssetId: input.vfxAssetId ?? artifacts.vfxAssetId,
+    motionClipDurationSec: input.motionClipDurationSec ?? artifacts.motionClipDurationSec
   };
 }
 
@@ -104,6 +109,11 @@ export function createJobStore({
       videoImagePath: normalizedInput.videoImagePath,
       coverImagePath: normalizedInput.coverImagePath,
       motionVideoPath: normalizedInput.motionVideoPath,
+      motionProvider: normalizedInput.motionProvider,
+      motionPresetPrimary: normalizedInput.motionPresetPrimary,
+      motionPresetSecondary: normalizedInput.motionPresetSecondary,
+      vfxAssetId: normalizedInput.vfxAssetId,
+      motionClipDurationSec: normalizedInput.motionClipDurationSec,
       masterAudioPath: normalizedInput.masterAudioPath,
       finalVideoPath: normalizedInput.finalVideoPath,
       youtubeUrl: normalizedInput.youtubeUrl,
