@@ -58,3 +58,31 @@ The check verifies:
 - the bundled rain overlay frame sequences
 - write access to `jobs/` and `outputs/`
 
+## Add A New Asset
+
+Use the scaffold script to register a new sequence and create its folder:
+
+```bash
+./scripts/add-vfx-asset.sh \
+  --id fog-layer-003 \
+  --directory FogLayer-003 \
+  --frame-pattern 'FogLayer-003.%04d.exr' \
+  --start-number 1001 \
+  --fps 25 \
+  --family fog \
+  --has-alpha true \
+  --recommended-opacity 0.72 \
+  --preferred-motion-preset fog
+```
+
+This script:
+
+- creates the target directory under `VFX_ASSET_ROOT`
+- writes a local `README.md` into that asset folder
+- inserts a new registry entry into [vfx-assets.js](/Users/liyang/project/video-generate/src/core/media/vfx-assets.js)
+
+After you copy the real frames into that directory, run:
+
+```bash
+./scripts/verify-web-runtime.sh
+```
