@@ -13,7 +13,9 @@ function readText(relativePath) {
 test("schedules page uses a dedicated schedule form component", () => {
   const pageSource = readText("app/schedules/page.tsx");
   assert.match(pageSource, /from\s+["']\.\.\/\.\.\/components\/schedule-form["']/);
+  assert.match(pageSource, /from\s+["']\.\.\/\.\.\/components\/schedules-list["']/);
   assert.match(pageSource, /<ScheduleForm\s*\/>/);
+  assert.match(pageSource, /<SchedulesList\b/);
 });
 
 test("schedule form exposes daily and weekly inputs and submits to schedules api", () => {
@@ -29,4 +31,14 @@ test("schedule form exposes daily and weekly inputs and submits to schedules api
   assert.match(formSource, /name=["']publishToYouTube["']/);
   assert.match(formSource, /type=["']submit["']/);
   assert.match(formSource, /\/api\/schedules/);
+});
+
+test("schedules list exposes toggle and run-now actions", () => {
+  const listSource = readText("components/schedules-list.tsx");
+
+  assert.match(listSource, /toggle/i);
+  assert.match(listSource, /run-now/i);
+  assert.match(listSource, /fetch\(/i);
+  assert.match(listSource, /enabled/i);
+  assert.match(listSource, /nextRunAt/i);
 });

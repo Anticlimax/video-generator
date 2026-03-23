@@ -1,3 +1,5 @@
+import { createJob } from "../jobs/create-job.js";
+
 function toTrimmedString(value) {
   return String(value ?? "").trim();
 }
@@ -99,7 +101,12 @@ function getScheduleIdFromRequest(request, context = {}) {
   }
 }
 
-export function createSchedulesApiHandlers({ store } = {}) {
+export function createSchedulesApiHandlers({
+  store,
+  createJobImpl = createJob,
+  jobStore = null,
+  runtimeConfig = {}
+} = {}) {
   if (!store) {
     throw new Error("missing_store");
   }
@@ -145,6 +152,55 @@ export function createSchedulesApiHandlers({ store } = {}) {
       }
 
       return Response.json({ schedule }, { status: 200 });
+    },
+
+    async toggle(request, context = {}) {
+      const scheduleId = getScheduleIdFromRequest(request, context);
+      if (!scheduleId) {
+        return jsonError("missing_schedule_id", 400);
+      }
+
+      const schedule = await store.getById(scheduleId);
+      if (!schedule) {
+        return jsonError("schedule_not_found", 404);
+      }
+
+      const updated = await store.update(scheduleId, {
+        enabled: !schedule.enabled
+      });
+
+      return Response.json({ schedule: updated }, { status: 200 });
+    },
+
+    async runNow(request, context = {}) {
+      const scheduleId = getScheduleIdFromRequest(request, context);
+      if (!scheduleId) {
+        return jsonError("missing_schedule_id", 400);
+      }
+
+      const schedule = await store.getById(scheduleId);
+      if (!schedule) {
+        return jsonError("schedule_not_found", 404);
+      }
+      if (!jobStore && createJobImpl === createJob) {
+        return jsonError("missing_job_store", 500);
+      }
+
+      try {
+        const created = await createJobImpl({
+          store: jobStore,
+          input: schedule.payload,
+          runtimeConfig
+        });
+        const nowIso = new Date().toISOString();
+        await store.update(scheduleId, {
+          lastRunAt: nowIso,
+          lastJobId: created?.job?.id || null
+        });
+        return Response.json({ job: created.job }, { status: 202 });
+      } catch (error) {
+        return jsonError(String(error?.message || "schedule_run_now_failed"), 500);
+      }
     }
   };
 }

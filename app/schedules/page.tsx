@@ -1,6 +1,16 @@
-import ScheduleForm from "../../components/schedule-form";
+import path from "node:path";
 
-export default function SchedulesPage() {
+import ScheduleForm from "../../components/schedule-form";
+import SchedulesList from "../../components/schedules-list";
+import { createScheduleStore } from "../../src/core/schedules/schedule-store.js";
+
+const store = createScheduleStore({
+  rootDir: path.join(process.cwd(), "schedules")
+});
+
+export default async function SchedulesPage() {
+  const schedules = await store.list({ limit: 50 });
+
   return (
     <main className="shell">
       <section className="hero">
@@ -11,6 +21,7 @@ export default function SchedulesPage() {
         </p>
 
         <ScheduleForm />
+        <SchedulesList schedules={schedules} />
       </section>
     </main>
   );

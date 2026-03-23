@@ -130,3 +130,115 @@ test("schedules api returns 404 for a missing schedule", async () => {
   const payload = await response.json();
   assert.equal(payload.error, "schedule_not_found");
 });
+
+test("schedules api toggles enabled state", async () => {
+  const store = {
+    create: async () => {
+      throw new Error("not used");
+    },
+    list: async () => [],
+    getById: async (scheduleId) =>
+      scheduleId === "schedule_1"
+        ? {
+            id: "schedule_1",
+            enabled: true,
+            kind: "daily",
+            time: "09:30",
+            weekday: null,
+            cronExpression: "30 9 * * *",
+            timezone: "UTC",
+            payload: { theme: "storm city", style: "calm", durationTargetSec: 30, provider: "mock" },
+            nextRunAt: "2026-03-23T09:30:00.000Z",
+            lastRunAt: null,
+            lastJobId: null,
+            createdAt: "2026-03-22T08:00:00.000Z",
+            updatedAt: "2026-03-22T08:00:00.000Z"
+          }
+        : null,
+    update: async (_scheduleId, patch) => ({
+      id: "schedule_1",
+      enabled: patch.enabled,
+      kind: "daily",
+      time: "09:30",
+      weekday: null,
+      cronExpression: "30 9 * * *",
+      timezone: "UTC",
+      payload: { theme: "storm city", style: "calm", durationTargetSec: 30, provider: "mock" },
+      nextRunAt: "2026-03-23T09:30:00.000Z",
+      lastRunAt: null,
+      lastJobId: null,
+      createdAt: "2026-03-22T08:00:00.000Z",
+      updatedAt: "2026-03-22T08:05:00.000Z"
+    })
+  };
+
+  const api = createSchedulesApiHandlers({ store });
+  const response = await api.toggle(new Request("http://localhost/api/schedules/schedule_1/toggle", { method: "POST" }), {
+    params: { id: "schedule_1" }
+  });
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.schedule.enabled, false);
+});
+
+test("schedules api runs a schedule immediately by creating a job", async () => {
+  const createdInputs = [];
+  const createdRuntimeConfigs = [];
+  const schedule = {
+    id: "schedule_1",
+    enabled: true,
+    kind: "daily",
+    time: "09:30",
+    weekday: null,
+    cronExpression: "30 9 * * *",
+    timezone: "UTC",
+    payload: {
+      theme: "storm city",
+      style: "calm",
+      durationTargetSec: 30,
+      provider: "mock"
+    },
+    nextRunAt: "2026-03-23T09:30:00.000Z",
+    lastRunAt: null,
+    lastJobId: null,
+    createdAt: "2026-03-22T08:00:00.000Z",
+    updatedAt: "2026-03-22T08:00:00.000Z"
+  };
+  const store = {
+    create: async () => {
+      throw new Error("not used");
+    },
+    list: async () => [],
+    getById: async (scheduleId) => (scheduleId === "schedule_1" ? schedule : null),
+    update: async (_scheduleId, patch) => ({
+      ...schedule,
+      ...patch
+    })
+  };
+
+  const api = createSchedulesApiHandlers({
+    store,
+    runtimeConfig: {
+      runwayApiKey: "runway-key"
+    },
+    createJobImpl: async ({ input, runtimeConfig }) => {
+      createdInputs.push(input);
+      createdRuntimeConfigs.push(runtimeConfig);
+      return {
+        job: { id: "job_1" }
+      };
+    }
+  });
+
+  const response = await api.runNow(new Request("http://localhost/api/schedules/schedule_1/run-now", { method: "POST" }), {
+    params: { id: "schedule_1" }
+  });
+
+  assert.equal(response.status, 202);
+  const payload = await response.json();
+  assert.equal(payload.job.id, "job_1");
+  assert.equal(createdInputs.length, 1);
+  assert.equal(createdInputs[0].theme, "storm city");
+  assert.equal(createdRuntimeConfigs[0].runwayApiKey, "runway-key");
+});
