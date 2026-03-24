@@ -165,7 +165,7 @@ test("runJob marks the job as failed when media generation throws", async () => 
   assert.equal(failed?.errorMessage, "music_provider_failed");
 });
 
-test("runJob falls back to template rendering when cover generation fails", async () => {
+test("runJob fails when image generation fails and no video source is available", async () => {
   const rootDir = makeTempDir();
   const store = createJobStore({
     rootDir,
@@ -197,20 +197,16 @@ test("runJob falls back to template rendering when cover generation fails", asyn
     generateCoverImpl: async () => {
       throw new Error("cover_provider_unavailable");
     },
-    renderVideoImpl: async ({ imagePath }) => {
-      assert.equal(imagePath, null);
-      return {
-        finalOutputPath: path.join(rootDir, "outputs", "storm-city.mp4"),
-        ffprobeSummary: { videoStreams: 1, audioStreams: 1 },
-        fileSizes: { finalBytes: 1024 }
-      };
+    renderVideoImpl: async () => {
+      throw new Error("render_should_not_run_without_video_source");
     }
   });
 
-  assert.equal(completed?.status, "completed");
-  assert.equal(completed?.stage, "completed");
+  assert.equal(completed?.status, "failed");
+  assert.equal(completed?.stage, "failed");
   assert.equal(completed?.coverImagePath, null);
-  assert.equal(completed?.finalVideoPath, path.join(rootDir, "outputs", "storm-city.mp4"));
+  assert.equal(completed?.finalVideoPath, null);
+  assert.equal(completed?.errorCode, "image_generation_required");
 });
 
 test("runJob can generate a motion video and pass it into the renderer", async () => {

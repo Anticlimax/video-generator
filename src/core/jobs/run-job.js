@@ -237,6 +237,10 @@ export async function runJob({
       progress: 85
     });
 
+    if (!videoImageResult?.imagePath && !motionVideoResult?.motionVideoPath) {
+      throw new Error("image_generation_required");
+    }
+
     const finalCoverImagePath = coverResult?.imagePath || videoImageResult?.imagePath || null;
 
     const renderResult = await renderVideoImpl({
