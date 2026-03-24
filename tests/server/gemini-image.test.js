@@ -125,27 +125,143 @@ test("generateGeminiImage does not retry non-transient provider failures", async
   const outputPath = path.join(rootDir, "cover.png");
   let callCount = 0;
 
-  await assert.rejects(
-    () =>
-      generateGeminiImage({
-        apiKey: "test-key",
-        prompt: "storm city at night",
-        outputPath,
-        retryBaseDelayMs: 1,
-        maxAttemptsPerModel: 3,
-        clientFactory: () => ({
-          interactions: {
-            create: async () => {
-              callCount += 1;
-              throw new Error("invalid_prompt");
-            }
+  let error = null;
+  try {
+    await generateGeminiImage({
+      apiKey: "test-key",
+      prompt: "storm city at night",
+      outputPath,
+      retryBaseDelayMs: 1,
+      maxAttemptsPerModel: 3,
+      clientFactory: () => ({
+        interactions: {
+          create: async () => {
+            callCount += 1;
+            throw new Error("invalid_prompt");
           }
-        })
-      }),
-    /invalid_prompt/
-  );
+        }
+      })
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  }
 
   assert.equal(callCount, 1);
+  assert.ok(error);
+  assert.match(String(error?.message || ""), /invalid_prompt/);
+  assert.equal(error?.imageProvider, "gemini-image");
+  assert.equal(error?.imageModel, "gemini-3-pro-image-preview");
+  assert.equal(error?.imageAttemptCount, 1);
+  assert.equal(error?.imageFallbackUsed, false);
+});
+
+test("generateGeminiImage preserves metadata on terminal non-transient api errors", async () => {
+  const rootDir = makeTempDir();
+  const outputPath = path.join(rootDir, "cover.png");
+  let callCount = 0;
+
+  let error = null;
+  try {
+    await generateGeminiImage({
+      apiKey: "test-key",
+      prompt: "storm city at night",
+      outputPath,
+      fallbackModel: "gemini-2.5-flash-image-preview",
+      retryBaseDelayMs: 1,
+      maxAttemptsPerModel: 3,
+      clientFactory: () => ({
+        interactions: {
+          create: async () => {
+            callCount += 1;
+            throw new Error('{"error":{"code":400,"status":"INVALID_ARGUMENT","message":"bad request"}}');
+          }
+        }
+      })
+    });
+  } catch (caughtError) {
+    error = caughtError;
+  }
+
+  assert.equal(callCount, 1);
+  assert.ok(error);
+  assert.equal(error?.imageProvider, "gemini-image");
+  assert.equal(error?.imageModel, "gemini-3-pro-image-preview");
+  assert.equal(error?.imageAttemptCount, 1);
+  assert.equal(error?.imageFallbackUsed, false);
+});
+
+test("generateGeminiImage falls back after primary api_error responses", async () => {
+  const rootDir = makeTempDir();
+  const outputPath = path.join(rootDir, "cover.png");
+  const expectedBytes = Buffer.from("fake png bytes");
+  const calls = [];
+
+  const result = await generateGeminiImage({
+    apiKey: "test-key",
+    prompt: "storm city at night",
+    outputPath,
+    fallbackModel: "gemini-2.5-flash-image-preview",
+    retryBaseDelayMs: 1,
+    maxAttemptsPerModel: 1,
+    clientFactory: () => ({
+      interactions: {
+        create: async ({ model }) => {
+          calls.push(model);
+          if (model === "gemini-3-pro-image-preview") {
+            throw new Error('{"error":{"message":"Internal server error","code":"api_error"}}');
+          }
+          return {
+            outputs: [{ type: "image", mime_type: "image/png", data: expectedBytes }]
+          };
+        }
+      }
+    })
+  });
+
+  assert.equal(result.model, "gemini-2.5-flash-image-preview");
+  assert.equal(result.attemptCount, 2);
+  assert.equal(result.fallbackUsed, true);
+  assert.deepEqual(calls, [
+    "gemini-3-pro-image-preview",
+    "gemini-2.5-flash-image-preview"
+  ]);
+});
+
+test("generateGeminiImage falls back after primary errors with an http status prefix", async () => {
+  const rootDir = makeTempDir();
+  const outputPath = path.join(rootDir, "cover.png");
+  const expectedBytes = Buffer.from("fake png bytes");
+  const calls = [];
+
+  const result = await generateGeminiImage({
+    apiKey: "test-key",
+    prompt: "storm city at night",
+    outputPath,
+    fallbackModel: "gemini-2.5-flash-image-preview",
+    retryBaseDelayMs: 1,
+    maxAttemptsPerModel: 1,
+    clientFactory: () => ({
+      interactions: {
+        create: async ({ model }) => {
+          calls.push(model);
+          if (model === "gemini-3-pro-image-preview") {
+            throw new Error('500 {"error":{"message":"Internal server error","code":"api_error"}}');
+          }
+          return {
+            outputs: [{ type: "image", mime_type: "image/png", data: expectedBytes }]
+          };
+        }
+      }
+    })
+  });
+
+  assert.equal(result.model, "gemini-2.5-flash-image-preview");
+  assert.equal(result.attemptCount, 2);
+  assert.equal(result.fallbackUsed, true);
+  assert.deepEqual(calls, [
+    "gemini-3-pro-image-preview",
+    "gemini-2.5-flash-image-preview"
+  ]);
 });
 
 test("generateGeminiImage rejects when no api key is available", async () => {
@@ -206,13 +322,10 @@ test("generateGeminiImage rejects with timeout when Gemini does not respond", as
         prompt: "storm city at night",
         outputPath,
         timeoutMs: 10,
+        totalTimeoutMs: 10,
         retryBaseDelayMs: 1,
         maxAttemptsPerModel: 1,
-        clientFactory: () => ({
-          interactions: {
-            create: async () => new Promise(() => {})
-          }
-        })
+        requestImpl: async () => new Promise(() => {})
       }),
     /cover_generation_timeout/
   );
@@ -230,17 +343,14 @@ test("generateGeminiImage enforces timeout as a total retry budget", async () =>
         apiKey: "test-key",
         prompt: "storm city at night",
         outputPath,
-        timeoutMs: 40,
+        timeoutMs: 1000,
+        totalTimeoutMs: 40,
         retryBaseDelayMs: 50,
         maxAttemptsPerModel: 3,
-        clientFactory: () => ({
-          interactions: {
-            create: async () => {
-              callCount += 1;
-              return new Promise(() => {});
-            }
-          }
-        })
+        requestImpl: async () => {
+          callCount += 1;
+          return new Promise(() => {});
+        }
       }),
     /cover_generation_timeout/
   );

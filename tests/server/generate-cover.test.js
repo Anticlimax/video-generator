@@ -99,13 +99,10 @@ test("generateCover times out when the generator hangs", async () => {
         style: "soft moonlit ambience",
         runtimeConfig: {
           geminiApiKey: "test-key",
+          coverGenerationAttemptTimeoutMs: 10,
           coverGenerationTimeoutMs: 10
         },
-        geminiClientFactory: () => ({
-          interactions: {
-            create: async () => new Promise(() => {})
-          }
-        })
+        geminiRequestImpl: async () => new Promise(() => {})
       }),
     /cover_generation_timeout/
   );

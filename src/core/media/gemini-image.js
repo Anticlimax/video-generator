@@ -81,19 +81,25 @@ function extractImageBytes(response) {
 function parseProviderError(error) {
   const rawMessage = String(error?.message || "").trim();
   if (!rawMessage) {
-    return { code: null, status: null, rawMessage: "" };
+    return { code: null, errorCode: null, status: null, rawMessage: "" };
   }
 
+  const jsonStartIndex = rawMessage.indexOf("{");
+  const candidateJson =
+    jsonStartIndex >= 0 && jsonStartIndex < rawMessage.length ? rawMessage.slice(jsonStartIndex) : rawMessage;
+
   try {
-    const parsed = JSON.parse(rawMessage);
+    const parsed = JSON.parse(candidateJson);
     return {
       code: Number(parsed?.error?.code || 0) || null,
+      errorCode: normalizeText(parsed?.error?.code),
       status: String(parsed?.error?.status || "").trim() || null,
       rawMessage
     };
   } catch {
     return {
       code: null,
+      errorCode: null,
       status: null,
       rawMessage
     };
@@ -112,6 +118,10 @@ function isTransientProviderError(error) {
 
   const parsed = parseProviderError(error);
   if (parsed.code === 429 || parsed.code === 503) {
+    return true;
+  }
+
+  if (parsed.errorCode === "api_error") {
     return true;
   }
 
@@ -152,6 +162,16 @@ function buildModelSequence(primaryModel, fallbackModel) {
   }
 
   return models;
+}
+
+function applyFailureMetadata(error, { usedModel, attemptCount, fallbackModel }) {
+  error.imageProvider = "gemini-image";
+  error.imageModel = usedModel || null;
+  error.imageAttemptCount = attemptCount;
+  error.imageFallbackUsed = normalizeText(fallbackModel)
+    ? usedModel === normalizeText(fallbackModel)
+    : false;
+  return error;
 }
 
 function withTimeout(promise, timeoutMs) {
@@ -195,6 +215,7 @@ export async function generateGeminiImage({
   imageSize = DEFAULT_IMAGE_SIZE,
   aspectRatio = DEFAULT_ASPECT_RATIO,
   timeoutMs = 60000,
+  totalTimeoutMs = null,
   maxAttemptsPerModel = DEFAULT_MAX_ATTEMPTS_PER_MODEL,
   retryBaseDelayMs = DEFAULT_RETRY_BASE_DELAY_MS,
   clientFactory,
@@ -221,30 +242,44 @@ export async function generateGeminiImage({
   const attemptLimit = Number.isFinite(Number(maxAttemptsPerModel))
     ? Math.max(1, Number(maxAttemptsPerModel))
     : DEFAULT_MAX_ATTEMPTS_PER_MODEL;
-  const totalTimeoutMs = Number(timeoutMs || 0);
+  const attemptTimeoutMs = Number(timeoutMs || 0);
+  const resolvedTotalTimeoutMs =
+    totalTimeoutMs == null || totalTimeoutMs === ""
+      ? attemptTimeoutMs * attemptLimit * Math.max(1, models.length)
+      : Number(totalTimeoutMs);
   const deadlineMs =
-    Number.isFinite(totalTimeoutMs) && totalTimeoutMs > 0 ? Date.now() + totalTimeoutMs : Infinity;
+    Number.isFinite(resolvedTotalTimeoutMs) && resolvedTotalTimeoutMs > 0
+      ? Date.now() + resolvedTotalTimeoutMs
+      : Infinity;
 
   let lastError = null;
   let attemptCount = 0;
   let usedModel = models[0] || DEFAULT_MODEL;
 
-  const request = async (requestedModel) => {
+  const request = async (requestedModel, requestTimeoutMs) => {
     if (typeof requestImpl === "function") {
-      return requestImpl({
-        client,
-        model: requestedModel,
-        prompt: resolvedPrompt,
-        imageSize,
-        aspectRatio
-      });
+      return withTimeout(
+        requestImpl({
+          client,
+          model: requestedModel,
+          prompt: resolvedPrompt,
+          imageSize,
+          aspectRatio
+        }),
+        requestTimeoutMs
+      );
     }
 
-    return client.interactions.create({
-      model: requestedModel,
-      input: resolvedPrompt,
-      response_modalities: ["image"]
-    });
+    return client.interactions.create(
+      {
+        model: requestedModel,
+        input: resolvedPrompt,
+        response_modalities: ["image"]
+      },
+      Number.isFinite(requestTimeoutMs) && requestTimeoutMs > 0
+        ? { timeout: requestTimeoutMs }
+        : undefined
+    );
   };
 
   let response = null;
@@ -269,7 +304,13 @@ export async function generateGeminiImage({
           throw timeoutError;
         }
 
-        response = await withTimeout(request(currentModel), remainingBudgetMs);
+        response = await request(
+          currentModel,
+          Math.min(
+            remainingBudgetMs,
+            Number.isFinite(attemptTimeoutMs) && attemptTimeoutMs > 0 ? attemptTimeoutMs : remainingBudgetMs
+          )
+        );
         lastError = null;
         modelIndex = models.length;
         break;
@@ -277,7 +318,11 @@ export async function generateGeminiImage({
         lastError = error;
 
         if (!isTransientProviderError(error)) {
-          throw error;
+          throw applyFailureMetadata(error, {
+            usedModel,
+            attemptCount,
+            fallbackModel
+          });
         }
 
         const isFinalAttemptForModel = attempt + 1 >= attemptLimit;
@@ -296,13 +341,11 @@ export async function generateGeminiImage({
 
   if (!response) {
     const finalError = lastError || new Error("cover_generation_failed");
-    finalError.imageProvider = "gemini-image";
-    finalError.imageModel = usedModel || null;
-    finalError.imageAttemptCount = attemptCount;
-    finalError.imageFallbackUsed = normalizeText(fallbackModel)
-      ? usedModel === normalizeText(fallbackModel)
-      : false;
-    throw finalError;
+    throw applyFailureMetadata(finalError, {
+      usedModel,
+      attemptCount,
+      fallbackModel
+    });
   }
 
   const imageBytes = extractImageBytes(response);
