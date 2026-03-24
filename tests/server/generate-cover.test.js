@@ -98,10 +98,46 @@ test("generateCover times out when the generator hangs", async () => {
         theme: "mysterious forest",
         style: "soft moonlit ambience",
         runtimeConfig: {
+          geminiApiKey: "test-key",
           coverGenerationTimeoutMs: 10
         },
-        runCommandImpl: async () => new Promise(() => {})
+        geminiClientFactory: () => ({
+          models: {
+            generateContent: async () => new Promise(() => {})
+          }
+        })
       }),
     /cover_generation_timeout/
   );
+});
+
+test("generateCover uses the in-repo gemini provider by default", async () => {
+  const rootDir = makeTempDir();
+
+  const result = await generateCover({
+    rootDir,
+    now: () => new Date("2026-03-20T09:10:00Z"),
+    randomSuffix: () => "c124",
+    theme: "mysterious forest",
+    style: "soft moonlit ambience",
+    runtimeConfig: {
+      geminiApiKey: "test-key"
+    },
+    geminiClientFactory: () => ({
+      models: {
+        generateContent: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [{ inlineData: { data: Buffer.from("fake png") } }]
+              }
+            }
+          ]
+        })
+      }
+    })
+  });
+
+  assert.equal(result.provider, "gemini-image");
+  assert.equal(fs.existsSync(result.imagePath), true);
 });

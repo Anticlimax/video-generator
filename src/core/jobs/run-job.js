@@ -93,6 +93,7 @@ export async function runJob({
     });
 
     let videoImageResult = null;
+    let videoImageError = null;
     let coverResult = null;
     let motionVideoResult = null;
     try {
@@ -115,8 +116,9 @@ export async function runJob({
         prompt: currentJob.videoVisualPrompt || "",
         runtimeConfig
       });
-    } catch {
+    } catch (error) {
       videoImageResult = null;
+      videoImageError = error;
     } finally {
       await store.update(jobId, {
         status: "running",
@@ -238,6 +240,9 @@ export async function runJob({
     });
 
     if (!videoImageResult?.imagePath && !motionVideoResult?.motionVideoPath) {
+      if (videoImageError) {
+        throw videoImageError;
+      }
       throw new Error("image_generation_required");
     }
 

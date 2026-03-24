@@ -206,7 +206,54 @@ test("runJob fails when image generation fails and no video source is available"
   assert.equal(completed?.stage, "failed");
   assert.equal(completed?.coverImagePath, null);
   assert.equal(completed?.finalVideoPath, null);
-  assert.equal(completed?.errorCode, "image_generation_required");
+  assert.equal(completed?.errorCode, "cover_provider_unavailable");
+  assert.equal(completed?.errorMessage, "cover_provider_unavailable");
+});
+
+test("runJob preserves the underlying video image generation error when no renderable source exists", async () => {
+  const rootDir = makeTempDir();
+  const store = createJobStore({
+    rootDir,
+    now: (() => {
+      let tick = 0;
+      return () => new Date(1773993600000 + tick++ * 1000);
+    })(),
+    randomSuffix: (() => {
+      let tick = 0;
+      return () => `e${tick++}x3`;
+    })()
+  });
+
+  const created = await store.create({
+    theme: "mysterious forest",
+    style: "soft moonlit ambience",
+    durationTargetSec: 30,
+    provider: "mock"
+  });
+
+  const failed = await runJob({
+    jobId: created.id,
+    store,
+    generateMusicImpl: async () => ({
+      masterAudioPath: path.join(rootDir, created.id, "master_audio.wav"),
+      masterDurationSec: 30,
+      provider: "mock"
+    }),
+    generateCoverImpl: async () => {
+      throw new Error("cover_generation_timeout");
+    },
+    renderVideoImpl: async () => {
+      throw new Error("render_should_not_run_without_video_source");
+    }
+  });
+
+  assert.equal(failed?.status, "failed");
+  assert.equal(failed?.stage, "failed");
+  assert.equal(failed?.videoImagePath, null);
+  assert.equal(failed?.coverImagePath, null);
+  assert.equal(failed?.finalVideoPath, null);
+  assert.equal(failed?.errorCode, "cover_generation_timeout");
+  assert.equal(failed?.errorMessage, "cover_generation_timeout");
 });
 
 test("runJob can generate a motion video and pass it into the renderer", async () => {

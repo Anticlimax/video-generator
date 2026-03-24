@@ -15,7 +15,7 @@ The repo still carries the older OpenClaw compatibility layer for migration and 
 - Final exports in `outputs/`
 - Default music provider: `mock`
 - Real music providers: `musicgpt`, `elevenlabs`
-- Cover generation helper: `nano-banana-pro`
+- Cover generation provider: in-repo Gemini image adapter
 - Optional YouTube publish helper: `youtube-publisher`
 - Legacy OpenClaw plugin entry still exists in `openclaw/index.js`
 
@@ -85,9 +85,9 @@ The server pipeline supports these music modes:
 - `musicgpt`
 - `elevenlabs`
 
-The current cover generator still shells out to the bundled `nano-banana-pro` helper on the host. Optional YouTube publish reuses the local `youtube-publisher` helper.
+The web app now generates covers through an in-repo Node Gemini provider. Optional YouTube publish still reuses the local `youtube-publisher` helper.
 
-If you switch away from `mock`, make sure the deployment host has the required provider keys and local helper scripts available.
+If you switch away from `mock`, make sure the deployment host has the required provider keys available.
 
 ## Deployment Notes
 

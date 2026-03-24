@@ -1,61 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { spawn } from "node:child_process";
 
 import { createJobWorkspace } from "../../lib/jobs.js";
-
-const NANO_BANANA_SCRIPT_PATH = path.join(
-  process.env.HOME || "",
-  ".nvm/versions/node/v22.20.0/lib/node_modules/openclaw/skills/nano-banana-pro/scripts/generate_image.py"
-);
-
-function runCommand(command, args, options = {}) {
-  const timeoutMs = Number(options.timeoutMs || 0);
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      stdio: ["ignore", "pipe", "pipe"]
-    });
-    let stderr = "";
-    let settled = false;
-    let timeoutId = null;
-
-    function finish(callback) {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      callback();
-    }
-
-    child.stderr.on("data", (chunk) => {
-      stderr += String(chunk);
-    });
-
-    if (timeoutMs > 0) {
-      timeoutId = setTimeout(() => {
-        try {
-          child.kill("SIGKILL");
-        } catch {}
-        finish(() => reject(new Error("cover_generation_timeout")));
-      }, timeoutMs);
-    }
-
-    child.on("error", (error) => finish(() => reject(error)));
-    child.on("close", (code) => {
-      if (settled) {
-        return;
-      }
-      if (code === 0) {
-        finish(() => resolve());
-        return;
-      }
-      finish(() => reject(new Error(`${command} exited with code ${code}\n${stderr}`)));
-    });
-  });
-}
+import { generateGeminiImage } from "./gemini-image.js";
 
 function withTimeout(promise, timeoutMs) {
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
@@ -109,34 +56,17 @@ async function runDefaultCoverGenerator({
   outputPath,
   prompt,
   runtimeConfig = {},
-  runCommandImpl = runCommand
+  geminiClientFactory,
+  geminiRequestImpl
 }) {
-  const args = [
-    "run",
-    NANO_BANANA_SCRIPT_PATH,
-    "--prompt",
+  return generateGeminiImage({
+    apiKey: runtimeConfig.geminiApiKey,
     prompt,
-    "--filename",
     outputPath,
-    "--resolution",
-    "1K",
-    "--aspect-ratio",
-    "16:9"
-  ];
-
-  if (runtimeConfig.geminiApiKey) {
-    args.push("--api-key", String(runtimeConfig.geminiApiKey));
-  }
-
-  await runCommandImpl("uv", args, {
-    timeoutMs: Number(runtimeConfig.coverGenerationTimeoutMs || 60000)
+    timeoutMs: Number(runtimeConfig.coverGenerationTimeoutMs || 120000),
+    clientFactory: geminiClientFactory,
+    requestImpl: geminiRequestImpl
   });
-
-  return {
-    imagePath: outputPath,
-    prompt,
-    provider: "nano-banana-pro"
-  };
 }
 
 export async function generateCover({
@@ -150,8 +80,9 @@ export async function generateCover({
   resolvedTheme = null,
   prompt = "",
   runtimeConfig = {},
-  runCommandImpl = runCommand,
-  coverGeneratorImpl
+  coverGeneratorImpl,
+  geminiClientFactory,
+  geminiRequestImpl
 } = {}) {
   const resolvedNow = typeof now === "function" ? now() : now || new Date();
   const job = await createJobWorkspace({
@@ -172,14 +103,20 @@ export async function generateCover({
 
   const generator = coverGeneratorImpl
     ? coverGeneratorImpl
-    : (input) => runDefaultCoverGenerator({ ...input, runtimeConfig, runCommandImpl });
+    : (input) =>
+        runDefaultCoverGenerator({
+          ...input,
+          runtimeConfig,
+          geminiClientFactory,
+          geminiRequestImpl
+        });
 
   const coverResult = await withTimeout(
     generator({
       outputPath: imagePath,
       prompt: resolvedPrompt
     }),
-    Number(runtimeConfig.coverGenerationTimeoutMs || 60000)
+    Number(runtimeConfig.coverGenerationTimeoutMs || 120000)
   );
 
   await fs.mkdir(path.dirname(coverResult.imagePath), { recursive: true });

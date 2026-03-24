@@ -26,3 +26,9 @@ test("resolveRuntimeConfig maps env into runtime config", () => {
   assert.equal(config.rainVfxStartNumber, 1005);
   assert.equal(config.rainVfxOverlayOpacity, 0.72);
 });
+
+test("resolveRuntimeConfig defaults cover generation timeout to 120000ms", () => {
+  const config = resolveRuntimeConfig({});
+
+  assert.equal(config.coverGenerationTimeoutMs, 120000);
+});

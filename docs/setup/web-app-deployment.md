@@ -160,6 +160,6 @@ Use the bundled rain overlay asset registry instead of hard-coding paths in depl
 ## Upgrade Notes
 
 - There is no auth layer yet, so do not expose the app publicly without adding one.
-- The UI and API are ready to host the workflow, but the current media adapters still rely on host-local helper scripts for cover generation and YouTube publish.
+- The UI and API are ready to host the workflow. Cover generation now runs through the in-repo Node Gemini provider; YouTube publish still relies on the host-local helper.
 - The deployment host should keep the bundled rain overlay assets available; `./scripts/verify-web-runtime.sh` will fail fast if they are missing.
 - If you later split media generation into a background worker, the job store and API routes can stay as they are.
