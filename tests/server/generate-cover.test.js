@@ -132,3 +132,71 @@ test("generateCover uses the in-repo gemini provider by default", async () => {
   assert.equal(result.provider, "gemini-image");
   assert.equal(fs.existsSync(result.imagePath), true);
 });
+
+test("generateCover normalizes non-16:9 images after generation", async () => {
+  const rootDir = makeTempDir();
+  const ffmpegCalls = [];
+
+  const result = await generateCover({
+    rootDir,
+    now: () => new Date("2026-03-20T09:10:00Z"),
+    randomSuffix: () => "c125",
+    theme: "storm city",
+    style: "cinematic storm ambience",
+    coverGeneratorImpl: async ({ outputPath, prompt }) => {
+      await fs.promises.mkdir(path.dirname(outputPath), { recursive: true });
+      await fs.promises.writeFile(outputPath, "fake png");
+      return {
+        imagePath: outputPath,
+        prompt,
+        provider: "test-cover-provider"
+      };
+    },
+    probeImageImpl: async () => ({
+      width: 1024,
+      height: 1024
+    }),
+    runCommandImpl: async (command, args) => {
+      ffmpegCalls.push({ command, args });
+      const outputPath = args.at(-1);
+      await fs.promises.writeFile(outputPath, "normalized png");
+    }
+  });
+
+  assert.equal(result.imagePath.endsWith("cover_image.png"), true);
+  assert.equal(ffmpegCalls.length, 1);
+  assert.equal(ffmpegCalls[0].command, "ffmpeg");
+  assert.match(ffmpegCalls[0].args.join(" "), /scale=1280:720:force_original_aspect_ratio=increase/);
+  assert.match(ffmpegCalls[0].args.join(" "), /crop=1280:720/);
+});
+
+test("generateCover skips normalization when image is already 16:9", async () => {
+  const rootDir = makeTempDir();
+  let runCommandCalled = false;
+
+  await generateCover({
+    rootDir,
+    now: () => new Date("2026-03-20T09:10:00Z"),
+    randomSuffix: () => "c126",
+    theme: "storm city",
+    style: "cinematic storm ambience",
+    coverGeneratorImpl: async ({ outputPath, prompt }) => {
+      await fs.promises.mkdir(path.dirname(outputPath), { recursive: true });
+      await fs.promises.writeFile(outputPath, "fake png");
+      return {
+        imagePath: outputPath,
+        prompt,
+        provider: "test-cover-provider"
+      };
+    },
+    probeImageImpl: async () => ({
+      width: 1280,
+      height: 720
+    }),
+    runCommandImpl: async () => {
+      runCommandCalled = true;
+    }
+  });
+
+  assert.equal(runCommandCalled, false);
+});
