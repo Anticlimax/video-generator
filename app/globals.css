@@ -59,6 +59,38 @@ a {
   backdrop-filter: blur(18px);
 }
 
+.integrations-card {
+  display: grid;
+  gap: 16px;
+}
+
+.integrations-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.integration-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.integration-row h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.integration-row p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .eyebrow {
   margin: 0;
   color: var(--accent);
