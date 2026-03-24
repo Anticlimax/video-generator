@@ -51,3 +51,12 @@ test("schedule edit page reuses the schedule form component", () => {
   assert.match(pageSource, /from\s+["']\.\.\/\.\.\/\.\.\/components\/schedule-form["']/);
   assert.match(pageSource, /<ScheduleForm\b/);
 });
+
+test("job form exposes a Gemini randomize action for theme and style", () => {
+  const formSource = readText("components/job-form.tsx");
+
+  assert.match(formSource, /randomize/i);
+  assert.match(formSource, /\/api\/jobs\/randomize/);
+  assert.match(formSource, /name=["']theme["']/);
+  assert.match(formSource, /name=["']style["']/);
+});

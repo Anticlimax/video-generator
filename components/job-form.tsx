@@ -41,8 +41,31 @@ export default function JobForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRandomizing, setIsRandomizing] = useState(false);
   const [generateSeparateCover, setGenerateSeparateCover] = useState(false);
   const [generateMotionVideo, setGenerateMotionVideo] = useState(false);
+  const [theme, setTheme] = useState("");
+  const [style, setStyle] = useState("");
+
+  async function handleRandomize() {
+    try {
+      setError(null);
+      setIsRandomizing(true);
+      const response = await fetch("/api/jobs/randomize", {
+        method: "POST"
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body?.error || "theme_style_randomize_failed");
+      }
+      setTheme(String(body?.theme || "").trim());
+      setStyle(String(body?.style || "").trim());
+    } catch (randomizeError) {
+      setError(toMessage(randomizeError));
+    } finally {
+      setIsRandomizing(false);
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,8 +73,8 @@ export default function JobForm() {
     setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
-    const theme = String(formData.get("theme") || "").trim();
-    const style = String(formData.get("style") || "").trim();
+    const themeValue = String(formData.get("theme") || "").trim();
+    const styleValue = String(formData.get("style") || "").trim();
     const durationRaw = String(formData.get("duration") || "").trim();
     const provider = String(formData.get("provider") || "musicgpt").trim();
     const publishToYouTube = formData.get("publishToYouTube") === "on";
@@ -62,8 +85,8 @@ export default function JobForm() {
 
     try {
       const payload = {
-        theme,
-        style,
+        theme: themeValue,
+        style: styleValue,
         durationTargetSec: parseDurationToSeconds(durationRaw),
         provider,
         publishToYouTube,
@@ -103,13 +126,29 @@ export default function JobForm() {
     <form className="card form job-form" onSubmit={handleSubmit}>
       <label>
         Theme
-        <input name="theme" placeholder="storm city" required />
+        <input
+          name="theme"
+          placeholder="storm city"
+          value={theme}
+          onChange={(event) => setTheme(event.target.value)}
+          required
+        />
       </label>
 
       <label>
         Style
-        <input name="style" placeholder="cinematic storm ambience" required />
+        <input
+          name="style"
+          placeholder="cinematic storm ambience"
+          value={style}
+          onChange={(event) => setStyle(event.target.value)}
+          required
+        />
       </label>
+
+      <button type="button" className="job-action" onClick={handleRandomize} disabled={isRandomizing || isSubmitting}>
+        {isRandomizing ? "Randomizing..." : "Randomize theme + style"}
+      </button>
 
       <label>
         Duration
