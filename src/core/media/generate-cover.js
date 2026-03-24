@@ -9,25 +9,74 @@ const NANO_BANANA_SCRIPT_PATH = path.join(
   ".nvm/versions/node/v22.20.0/lib/node_modules/openclaw/skills/nano-banana-pro/scripts/generate_image.py"
 );
 
-function runCommand(command, args) {
+function runCommand(command, args, options = {}) {
+  const timeoutMs = Number(options.timeoutMs || 0);
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       stdio: ["ignore", "pipe", "pipe"]
     });
     let stderr = "";
+    let settled = false;
+    let timeoutId = null;
+
+    function finish(callback) {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      callback();
+    }
 
     child.stderr.on("data", (chunk) => {
       stderr += String(chunk);
     });
 
-    child.on("error", reject);
+    if (timeoutMs > 0) {
+      timeoutId = setTimeout(() => {
+        try {
+          child.kill("SIGKILL");
+        } catch {}
+        finish(() => reject(new Error("cover_generation_timeout")));
+      }, timeoutMs);
+    }
+
+    child.on("error", (error) => finish(() => reject(error)));
     child.on("close", (code) => {
-      if (code === 0) {
-        resolve();
+      if (settled) {
         return;
       }
-      reject(new Error(`${command} exited with code ${code}\n${stderr}`));
+      if (code === 0) {
+        finish(() => resolve());
+        return;
+      }
+      finish(() => reject(new Error(`${command} exited with code ${code}\n${stderr}`)));
     });
+  });
+}
+
+function withTimeout(promise, timeoutMs) {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return promise;
+  }
+
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error("cover_generation_timeout"));
+    }, timeoutMs);
+
+    Promise.resolve(promise).then(
+      (value) => {
+        clearTimeout(timeoutId);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      }
+    );
   });
 }
 
@@ -79,7 +128,9 @@ async function runDefaultCoverGenerator({
     args.push("--api-key", String(runtimeConfig.geminiApiKey));
   }
 
-  await runCommandImpl("uv", args);
+  await runCommandImpl("uv", args, {
+    timeoutMs: Number(runtimeConfig.coverGenerationTimeoutMs || 60000)
+  });
 
   return {
     imagePath: outputPath,
@@ -123,10 +174,13 @@ export async function generateCover({
     ? coverGeneratorImpl
     : (input) => runDefaultCoverGenerator({ ...input, runtimeConfig, runCommandImpl });
 
-  const coverResult = await generator({
-    outputPath: imagePath,
-    prompt: resolvedPrompt
-  });
+  const coverResult = await withTimeout(
+    generator({
+      outputPath: imagePath,
+      prompt: resolvedPrompt
+    }),
+    Number(runtimeConfig.coverGenerationTimeoutMs || 60000)
+  );
 
   await fs.mkdir(path.dirname(coverResult.imagePath), { recursive: true });
 

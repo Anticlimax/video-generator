@@ -85,3 +85,23 @@ test("generateCover writes artifacts into the provided job workspace", async () 
   assert.equal(result.imagePath, artifactPaths.imagePath);
   assert.equal(fs.existsSync(result.imagePath), true);
 });
+
+test("generateCover times out when the generator hangs", async () => {
+  const rootDir = makeTempDir();
+
+  await assert.rejects(
+    () =>
+      generateCover({
+        rootDir,
+        now: () => new Date("2026-03-20T09:10:00Z"),
+        randomSuffix: () => "c999",
+        theme: "mysterious forest",
+        style: "soft moonlit ambience",
+        runtimeConfig: {
+          coverGenerationTimeoutMs: 10
+        },
+        runCommandImpl: async () => new Promise(() => {})
+      }),
+    /cover_generation_timeout/
+  );
+});
