@@ -10,6 +10,9 @@ export function resolveRuntimeConfig(env = process.env) {
 
   return {
     geminiApiKey: env.GEMINI_API_KEY,
+    geminiImagePrimaryModel: env.GEMINI_IMAGE_PRIMARY_MODEL || "gemini-3-pro-image-preview",
+    geminiImageFallbackModel: env.GEMINI_IMAGE_FALLBACK_MODEL || null,
+    geminiImageMaxAttempts: Number(env.GEMINI_IMAGE_MAX_ATTEMPTS || 3),
     musicGptApiKey: env.MUSICGPT_API_KEY,
     elevenLabsApiKey: env.ELEVENLABS_API_KEY,
     runwayApiKey: env.RUNWAY_API_KEY,

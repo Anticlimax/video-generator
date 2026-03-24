@@ -63,7 +63,10 @@ async function runDefaultCoverGenerator({
     apiKey: runtimeConfig.geminiApiKey,
     prompt,
     outputPath,
+    model: runtimeConfig.geminiImagePrimaryModel,
+    fallbackModel: runtimeConfig.geminiImageFallbackModel,
     timeoutMs: Number(runtimeConfig.coverGenerationTimeoutMs || 120000),
+    maxAttemptsPerModel: Number(runtimeConfig.geminiImageMaxAttempts || 3),
     clientFactory: geminiClientFactory,
     requestImpl: geminiRequestImpl
   });

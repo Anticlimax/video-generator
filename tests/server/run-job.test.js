@@ -136,6 +136,56 @@ test("runJob keeps media artifacts inside the top-level web job directory", asyn
   assert.equal(completed?.finalVideoPath, path.join(rootDir, "outputs", "storm-city.mp4"));
 });
 
+test("runJob persists image generation metadata from the successful video image result", async () => {
+  const rootDir = makeTempDir();
+  const store = createJobStore({
+    rootDir,
+    now: (() => {
+      let tick = 0;
+      return () => new Date(1773993600000 + tick++ * 1000);
+    })(),
+    randomSuffix: (() => {
+      let tick = 0;
+      return () => `im${tick++}x8`;
+    })()
+  });
+
+  const created = await store.create({
+    theme: "storm city",
+    style: "cinematic storm ambience",
+    durationTargetSec: 30,
+    provider: "mock"
+  });
+
+  const completed = await runJob({
+    jobId: created.id,
+    store,
+    generateMusicImpl: async () => ({
+      masterAudioPath: path.join(rootDir, created.id, "master_audio.wav"),
+      masterDurationSec: 30,
+      provider: "mock"
+    }),
+    generateCoverImpl: async () => ({
+      imagePath: path.join(rootDir, created.id, "video_image.png"),
+      provider: "gemini-image",
+      model: "gemini-2.5-flash-image-preview",
+      attemptCount: 4,
+      fallbackUsed: true
+    }),
+    renderVideoImpl: async () => ({
+      finalOutputPath: path.join(rootDir, "outputs", "storm-city.mp4"),
+      ffprobeSummary: { videoStreams: 1, audioStreams: 1 },
+      fileSizes: { finalBytes: 1024 }
+    })
+  });
+
+  assert.equal(completed?.status, "completed");
+  assert.equal(completed?.imageProvider, "gemini-image");
+  assert.equal(completed?.imageModel, "gemini-2.5-flash-image-preview");
+  assert.equal(completed?.imageAttemptCount, 4);
+  assert.equal(completed?.imageFallbackUsed, true);
+});
+
 test("runJob marks the job as failed when media generation throws", async () => {
   const rootDir = makeTempDir();
   const store = createJobStore({

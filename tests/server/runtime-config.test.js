@@ -12,6 +12,9 @@ test("resolveRuntimeConfig maps env into runtime config", () => {
     YOUTUBE_CLIENT_ID: "yt-client",
     YOUTUBE_CLIENT_SECRET: "yt-secret",
     YOUTUBE_REFRESH_TOKEN: "yt-refresh",
+    GEMINI_IMAGE_PRIMARY_MODEL: "gemini-3-pro-image-preview",
+    GEMINI_IMAGE_FALLBACK_MODEL: "gemini-2.5-flash-image-preview",
+    GEMINI_IMAGE_MAX_ATTEMPTS: "4",
     MOTION_CLIP_DURATION_SEC: "8",
     COVER_GENERATION_TIMEOUT_MS: "15000",
     RAIN_VFX_OVERLAY_PATTERN: "/tmp/rain.%04d.exr",
@@ -26,6 +29,9 @@ test("resolveRuntimeConfig maps env into runtime config", () => {
   assert.equal(config.youtubeClientId, "yt-client");
   assert.equal(config.youtubeClientSecret, "yt-secret");
   assert.equal(config.youtubeRefreshToken, "yt-refresh");
+  assert.equal(config.geminiImagePrimaryModel, "gemini-3-pro-image-preview");
+  assert.equal(config.geminiImageFallbackModel, "gemini-2.5-flash-image-preview");
+  assert.equal(config.geminiImageMaxAttempts, 4);
   assert.equal(config.motionClipDurationSec, 8);
   assert.equal(config.coverGenerationTimeoutMs, 15000);
   assert.equal(config.rainVfxOverlayPattern, "/tmp/rain.%04d.exr");
@@ -37,4 +43,7 @@ test("resolveRuntimeConfig defaults cover generation timeout to 120000ms", () =>
   const config = resolveRuntimeConfig({});
 
   assert.equal(config.coverGenerationTimeoutMs, 120000);
+  assert.equal(config.geminiImagePrimaryModel, "gemini-3-pro-image-preview");
+  assert.equal(config.geminiImageFallbackModel, null);
+  assert.equal(config.geminiImageMaxAttempts, 3);
 });

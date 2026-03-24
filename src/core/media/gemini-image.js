@@ -4,6 +4,8 @@ import path from "node:path";
 const DEFAULT_MODEL = "gemini-3-pro-image-preview";
 const DEFAULT_IMAGE_SIZE = "1K";
 const DEFAULT_ASPECT_RATIO = "16:9";
+const DEFAULT_MAX_ATTEMPTS_PER_MODEL = 3;
+const DEFAULT_RETRY_BASE_DELAY_MS = 750;
 
 function normalizeText(value) {
   return String(value ?? "").trim();
@@ -55,6 +57,95 @@ function getInlineData(part) {
   return part?.inlineData?.data ?? part?.inline_data?.data ?? null;
 }
 
+function extractInteractionOutputs(response) {
+  if (Array.isArray(response?.outputs)) {
+    return response.outputs;
+  }
+
+  return [];
+}
+
+function extractImageBytes(response) {
+  const outputs = extractInteractionOutputs(response);
+  const imageOutput = outputs.find((output) => output?.type === "image" && output?.data != null);
+  const outputBytes = normalizeBytes(imageOutput?.data);
+  if (outputBytes) {
+    return outputBytes;
+  }
+
+  const parts = extractParts(response);
+  const imagePart = parts.find((part) => getInlineData(part) != null);
+  return normalizeBytes(getInlineData(imagePart));
+}
+
+function parseProviderError(error) {
+  const rawMessage = String(error?.message || "").trim();
+  if (!rawMessage) {
+    return { code: null, status: null, rawMessage: "" };
+  }
+
+  try {
+    const parsed = JSON.parse(rawMessage);
+    return {
+      code: Number(parsed?.error?.code || 0) || null,
+      status: String(parsed?.error?.status || "").trim() || null,
+      rawMessage
+    };
+  } catch {
+    return {
+      code: null,
+      status: null,
+      rawMessage
+    };
+  }
+}
+
+function isTransientProviderError(error) {
+  const message = String(error?.message || "").trim();
+  if (!message) {
+    return false;
+  }
+
+  if (message === "cover_generation_timeout") {
+    return true;
+  }
+
+  const parsed = parseProviderError(error);
+  if (parsed.code === 429 || parsed.code === 503) {
+    return true;
+  }
+
+  if (parsed.status === "RESOURCE_EXHAUSTED" || parsed.status === "UNAVAILABLE") {
+    return true;
+  }
+
+  return false;
+}
+
+function sleep(delayMs) {
+  if (!Number.isFinite(delayMs) || delayMs <= 0) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    setTimeout(resolve, delayMs);
+  });
+}
+
+function buildModelSequence(primaryModel, fallbackModel) {
+  const models = [];
+
+  if (normalizeText(primaryModel)) {
+    models.push(normalizeText(primaryModel));
+  }
+
+  if (normalizeText(fallbackModel) && normalizeText(fallbackModel) !== normalizeText(primaryModel)) {
+    models.push(normalizeText(fallbackModel));
+  }
+
+  return models;
+}
+
 function withTimeout(promise, timeoutMs) {
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     return promise;
@@ -92,9 +183,12 @@ export async function generateGeminiImage({
   outputPath,
   apiKey = "",
   model = DEFAULT_MODEL,
+  fallbackModel = "",
   imageSize = DEFAULT_IMAGE_SIZE,
   aspectRatio = DEFAULT_ASPECT_RATIO,
   timeoutMs = 60000,
+  maxAttemptsPerModel = DEFAULT_MAX_ATTEMPTS_PER_MODEL,
+  retryBaseDelayMs = DEFAULT_RETRY_BASE_DELAY_MS,
   clientFactory,
   requestImpl
 } = {}) {
@@ -115,35 +209,70 @@ export async function generateGeminiImage({
   }
 
   const client = await createGeminiClient({ apiKey: resolvedApiKey, clientFactory });
+  const models = buildModelSequence(model, fallbackModel);
+  const attemptLimit = Number.isFinite(Number(maxAttemptsPerModel))
+    ? Math.max(1, Number(maxAttemptsPerModel))
+    : DEFAULT_MAX_ATTEMPTS_PER_MODEL;
 
-  const request = async () => {
+  let lastError = null;
+  let attemptCount = 0;
+  let usedModel = models[0] || DEFAULT_MODEL;
+
+  const request = async (requestedModel) => {
     if (typeof requestImpl === "function") {
       return requestImpl({
         client,
-        model,
+        model: requestedModel,
         prompt: resolvedPrompt,
         imageSize,
         aspectRatio
       });
     }
 
-    return client.models.generateContent({
-      model,
-      contents: resolvedPrompt,
-      config: {
-        responseModalities: ["TEXT", "IMAGE"],
-        imageConfig: {
-          imageSize,
-          aspectRatio
-        }
-      }
+    return client.interactions.create({
+      model: requestedModel,
+      input: resolvedPrompt,
+      response_modalities: ["image"]
     });
   };
 
-  const response = await withTimeout(request(), Number(timeoutMs || 0));
-  const parts = extractParts(response);
-  const imagePart = parts.find((part) => getInlineData(part) != null);
-  const imageBytes = normalizeBytes(getInlineData(imagePart));
+  let response = null;
+
+  for (let modelIndex = 0; modelIndex < models.length; modelIndex += 1) {
+    const currentModel = models[modelIndex];
+
+    for (let attempt = 0; attempt < attemptLimit; attempt += 1) {
+      attemptCount += 1;
+      usedModel = currentModel;
+
+      try {
+        response = await withTimeout(request(currentModel), Number(timeoutMs || 0));
+        lastError = null;
+        modelIndex = models.length;
+        break;
+      } catch (error) {
+        lastError = error;
+
+        if (!isTransientProviderError(error)) {
+          throw error;
+        }
+
+        const isFinalAttemptForModel = attempt + 1 >= attemptLimit;
+        if (isFinalAttemptForModel) {
+          break;
+        }
+
+        const delayMs = Number(retryBaseDelayMs || 0) * 2 ** attempt;
+        await sleep(delayMs);
+      }
+    }
+  }
+
+  if (!response) {
+    throw lastError || new Error("cover_generation_failed");
+  }
+
+  const imageBytes = extractImageBytes(response);
 
   if (!imageBytes || imageBytes.length === 0) {
     throw new Error("cover_generation_no_image");
@@ -156,6 +285,8 @@ export async function generateGeminiImage({
     imagePath: resolvedOutputPath,
     prompt: resolvedPrompt,
     provider: "gemini-image",
-    model
+    model: usedModel,
+    attemptCount,
+    fallbackUsed: normalizeText(fallbackModel) ? usedModel === normalizeText(fallbackModel) : false
   };
 }

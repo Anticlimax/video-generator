@@ -102,8 +102,8 @@ test("generateCover times out when the generator hangs", async () => {
           coverGenerationTimeoutMs: 10
         },
         geminiClientFactory: () => ({
-          models: {
-            generateContent: async () => new Promise(() => {})
+          interactions: {
+            create: async () => new Promise(() => {})
           }
         })
       }),
@@ -124,15 +124,9 @@ test("generateCover uses the in-repo gemini provider by default", async () => {
       geminiApiKey: "test-key"
     },
     geminiClientFactory: () => ({
-      models: {
-        generateContent: async () => ({
-          candidates: [
-            {
-              content: {
-                parts: [{ inlineData: { data: Buffer.from("fake png") } }]
-              }
-            }
-          ]
+      interactions: {
+        create: async () => ({
+          outputs: [{ type: "image", data: Buffer.from("fake png") }]
         })
       }
     })

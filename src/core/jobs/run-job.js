@@ -125,7 +125,11 @@ export async function runJob({
         stage: "cover_ready",
         progress: 70,
         videoImagePath: videoImageResult?.imagePath || null,
-        coverImagePath: currentJob.generateSeparateCover ? null : videoImageResult?.imagePath || null
+        coverImagePath: currentJob.generateSeparateCover ? null : videoImageResult?.imagePath || null,
+        imageProvider: videoImageResult?.provider || null,
+        imageModel: videoImageResult?.model || null,
+        imageAttemptCount: videoImageResult?.attemptCount ?? null,
+        imageFallbackUsed: videoImageResult?.fallbackUsed ?? null
       });
     }
 

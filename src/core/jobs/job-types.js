@@ -37,6 +37,13 @@ const DEFAULT_MOTION_FIELDS = Object.freeze({
   motionClipDurationSec: null
 });
 
+const DEFAULT_IMAGE_FIELDS = Object.freeze({
+  imageProvider: null,
+  imageModel: null,
+  imageAttemptCount: null,
+  imageFallbackUsed: null
+});
+
 function assertValidEnum(value, validValues, label) {
   if (!validValues.includes(value)) {
     throw new Error(`invalid_${label}`);
@@ -102,6 +109,16 @@ function normalizeMotionFields(record = {}) {
   };
 }
 
+function normalizeImageFields(record = {}) {
+  return {
+    imageProvider: normalizeOptionalText(record.imageProvider),
+    imageModel: normalizeOptionalText(record.imageModel),
+    imageAttemptCount: normalizeOptionalNumber(record.imageAttemptCount),
+    imageFallbackUsed:
+      record.imageFallbackUsed == null ? null : Boolean(record.imageFallbackUsed)
+  };
+}
+
 export function createJobRecord(input = {}) {
   const id = normalizeText(input.id, "id");
   const theme = normalizeText(input.theme, "theme");
@@ -138,6 +155,8 @@ export function createJobRecord(input = {}) {
     ...normalizeArtifacts(input),
     ...DEFAULT_MOTION_FIELDS,
     ...normalizeMotionFields(input),
+    ...DEFAULT_IMAGE_FIELDS,
+    ...normalizeImageFields(input),
     ...DEFAULT_ERROR_FIELDS,
     errorCode: normalizeOptionalText(input.errorCode),
     errorMessage: normalizeOptionalText(input.errorMessage)
@@ -188,6 +207,22 @@ export function mergeJobRecord(existing, patch = {}, nowIso) {
       restPatch.motionClipDurationSec !== undefined
         ? normalizeOptionalNumber(restPatch.motionClipDurationSec)
         : existing.motionClipDurationSec,
+    imageProvider:
+      restPatch.imageProvider !== undefined
+        ? normalizeOptionalText(restPatch.imageProvider)
+        : existing.imageProvider,
+    imageModel:
+      restPatch.imageModel !== undefined
+        ? normalizeOptionalText(restPatch.imageModel)
+        : existing.imageModel,
+    imageAttemptCount:
+      restPatch.imageAttemptCount !== undefined
+        ? normalizeOptionalNumber(restPatch.imageAttemptCount)
+        : existing.imageAttemptCount,
+    imageFallbackUsed:
+      restPatch.imageFallbackUsed !== undefined
+        ? (restPatch.imageFallbackUsed == null ? null : Boolean(restPatch.imageFallbackUsed))
+        : existing.imageFallbackUsed,
     finalVideoPath:
       restPatch.finalVideoPath !== undefined
         ? normalizeOptionalText(restPatch.finalVideoPath)
