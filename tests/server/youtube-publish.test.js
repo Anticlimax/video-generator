@@ -47,32 +47,53 @@ test("publishVideo builds metadata defaults and delegates to an injected uploade
   assert.equal(result.studioUrl, "https://studio.youtube.com/video/abc123/edit");
 });
 
-test("publishVideo shells out and parses the publisher output", async () => {
+test("publishVideo uses the node oauth uploader by default", async () => {
   const videoPath = path.join(makeTempDir(), "final.mp4");
   fs.writeFileSync(videoPath, "video");
 
-  let commandSeen = null;
+  const calls = [];
   const result = await publishVideo({
     videoPath,
     theme: "ocean",
     style: "calm piano",
     runtimeConfig: {
-      youtubePublisherScriptPath: "/tmp/youtube_upload.py"
+      youtubeClientId: "client-id",
+      youtubeClientSecret: "client-secret",
+      youtubeRefreshToken: "refresh-token"
     },
-    runCommandImpl: async (command, args) => {
-      commandSeen = { command, args };
-      return {
-        stdout:
-          "视频 ID: abc999\n链接: https://www.youtube.com/watch?v=abc999\nStudio: https://studio.youtube.com/video/abc999/edit\n",
-        stderr: ""
-      };
+    fetchImpl: async (url, init = {}) => {
+      calls.push({
+        url: String(url),
+        method: init.method || "GET"
+      });
+
+      if (String(url) === "https://oauth2.googleapis.com/token") {
+        return new Response(JSON.stringify({ access_token: "access-123" }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        });
+      }
+
+      if (String(url).startsWith("https://www.googleapis.com/upload/youtube/v3/videos?")) {
+        return new Response("", {
+          status: 200,
+          headers: { location: "https://upload.youtube.test/resumable/abc" }
+        });
+      }
+
+      if (String(url) === "https://upload.youtube.test/resumable/abc") {
+        return new Response(JSON.stringify({ id: "abc999" }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        });
+      }
+
+      throw new Error(`unexpected_request:${url}`);
     }
   });
 
-  assert.equal(commandSeen?.command, "python3");
-  assert.equal(commandSeen?.args[0], "/tmp/youtube_upload.py");
-  assert.equal(commandSeen?.args[1], "upload");
-  assert.equal(commandSeen?.args[2], videoPath);
+  assert.equal(calls.length, 3);
+  assert.equal(calls[0].url, "https://oauth2.googleapis.com/token");
   assert.equal(result.videoId, "abc999");
   assert.equal(result.url, "https://www.youtube.com/watch?v=abc999");
   assert.equal(result.studioUrl, "https://studio.youtube.com/video/abc999/edit");

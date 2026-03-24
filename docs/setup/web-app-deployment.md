@@ -38,6 +38,9 @@ If you want non-mock media providers, also configure:
 - `ELEVENLABS_API_KEY`
 - `GEMINI_API_KEY`
 - `RUNWAY_API_KEY`
+- `YOUTUBE_CLIENT_ID`
+- `YOUTUBE_CLIENT_SECRET`
+- `YOUTUBE_REFRESH_TOKEN`
 - `MOTION_CLIP_DURATION_SEC`
 - `RAIN_VFX_OVERLAY_PATTERN`
 - `RAIN_VFX_START_NUMBER`
@@ -102,11 +105,11 @@ The current server modules accept these modes and helpers:
 - `geminiApiKey` for cover generation
 - `runwayApiKey` for image-to-video micro-motion
 
-For publish mode, keep the legacy YouTube helper configured on the host:
+For publish mode, configure the server runtime with:
 
-1. place `client_secret.json` where the local YouTube helper expects it
-2. run the OAuth authorization flow once
-3. keep the resulting token file on the deployment host
+- `YOUTUBE_CLIENT_ID`
+- `YOUTUBE_CLIENT_SECRET`
+- `YOUTUBE_REFRESH_TOKEN`
 
 If you do not want YouTube publishing, leave the publish checkbox off in the UI or the `publishToYouTube` field false in the API request.
 
@@ -160,6 +163,6 @@ Use the bundled rain overlay asset registry instead of hard-coding paths in depl
 ## Upgrade Notes
 
 - There is no auth layer yet, so do not expose the app publicly without adding one.
-- The UI and API are ready to host the workflow. Cover generation now runs through the in-repo Node Gemini provider; YouTube publish still relies on the host-local helper.
+- The UI and API are ready to host the workflow. Cover generation and YouTube publish now both run through in-repo Node providers.
 - The deployment host should keep the bundled rain overlay assets available; `./scripts/verify-web-runtime.sh` will fail fast if they are missing.
 - If you later split media generation into a background worker, the job store and API routes can stay as they are.

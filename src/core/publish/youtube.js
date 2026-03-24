@@ -1,10 +1,4 @@
-import path from "node:path";
-import { spawn } from "node:child_process";
-
-const DEFAULT_YOUTUBE_PUBLISHER_SCRIPT_PATH = path.join(
-  process.env.HOME || "",
-  ".openclaw/workspace/skills/youtube-publisher/scripts/youtube_upload.py"
-);
+import { uploadYoutubeVideoOAuth } from "./youtube-oauth.js";
 
 function trimText(value) {
   return String(value ?? "").trim();
@@ -49,31 +43,6 @@ function buildYoutubeMetadata({ theme, style, resolvedTheme }) {
     privacyStatus: "private",
     category: "10"
   };
-}
-
-function runCommand(command, args) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      stdio: ["ignore", "pipe", "pipe"]
-    });
-    let stdout = "";
-    let stderr = "";
-
-    child.stdout.on("data", (chunk) => {
-      stdout += String(chunk);
-    });
-    child.stderr.on("data", (chunk) => {
-      stderr += String(chunk);
-    });
-    child.on("error", reject);
-    child.on("close", (code) => {
-      if (code === 0) {
-        resolve({ stdout, stderr });
-        return;
-      }
-      reject(new Error(`${command} exited with code ${code}\n${stderr || stdout}`));
-    });
-  });
 }
 
 function parseUploadOutput(output) {
@@ -149,7 +118,7 @@ export async function publishVideo({
   privacyStatus = "private",
   category = "10",
   runtimeConfig = {},
-  runCommandImpl = runCommand
+  fetchImpl = fetch
 } = {}) {
   const normalizedVideoPath = trimText(videoPath);
   if (!normalizedVideoPath) {
@@ -177,24 +146,18 @@ export async function publishVideo({
     };
   }
 
-  const scriptPath =
-    trimText(runtimeConfig?.youtubePublisherScriptPath) || DEFAULT_YOUTUBE_PUBLISHER_SCRIPT_PATH;
-  const { stdout, stderr } = await runCommandImpl("python3", [
-    scriptPath,
-    "upload",
-    normalizedVideoPath,
-    "--title",
-    uploadInput.title,
-    "--description",
-    uploadInput.description,
-    "--privacy",
-    uploadInput.privacyStatus,
-    "--category",
-    uploadInput.category,
-    ...(uploadInput.tags.length > 0 ? ["--tags", ...uploadInput.tags] : [])
-  ]);
-
-  const parsed = parseUploadOutput(`${stdout}\n${stderr}`);
+  const parsed = await uploadYoutubeVideoOAuth({
+    videoPath: normalizedVideoPath,
+    title: uploadInput.title,
+    description: uploadInput.description,
+    tags: uploadInput.tags,
+    privacyStatus: uploadInput.privacyStatus,
+    category: uploadInput.category,
+    clientId: runtimeConfig.youtubeClientId,
+    clientSecret: runtimeConfig.youtubeClientSecret,
+    refreshToken: runtimeConfig.youtubeRefreshToken,
+    fetchImpl
+  });
   return {
     ok: true,
     ...uploadInput,

@@ -13,6 +13,9 @@ export function resolveRuntimeConfig(env = process.env) {
     musicGptApiKey: env.MUSICGPT_API_KEY,
     elevenLabsApiKey: env.ELEVENLABS_API_KEY,
     runwayApiKey: env.RUNWAY_API_KEY,
+    youtubeClientId: env.YOUTUBE_CLIENT_ID,
+    youtubeClientSecret: env.YOUTUBE_CLIENT_SECRET,
+    youtubeRefreshToken: env.YOUTUBE_REFRESH_TOKEN,
     motionClipDurationSec: Number(env.MOTION_CLIP_DURATION_SEC || 5),
     coverGenerationTimeoutMs: Number(env.COVER_GENERATION_TIMEOUT_MS || 120000),
     rainVfxOverlayPattern:

@@ -16,7 +16,7 @@ The repo still carries the older OpenClaw compatibility layer for migration and 
 - Default music provider: `mock`
 - Real music providers: `musicgpt`, `elevenlabs`
 - Cover generation provider: in-repo Gemini image adapter
-- Optional YouTube publish helper: `youtube-publisher`
+- Optional YouTube publish provider: in-repo Node OAuth uploader
 - Legacy OpenClaw plugin entry still exists in `openclaw/index.js`
 
 ## Run Locally
@@ -85,7 +85,7 @@ The server pipeline supports these music modes:
 - `musicgpt`
 - `elevenlabs`
 
-The web app now generates covers through an in-repo Node Gemini provider. Optional YouTube publish still reuses the local `youtube-publisher` helper.
+The web app now generates covers through an in-repo Node Gemini provider. Optional YouTube publish also runs through an in-repo Node OAuth uploader.
 
 If you switch away from `mock`, make sure the deployment host has the required provider keys available.
 
