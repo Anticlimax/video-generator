@@ -242,3 +242,92 @@ test("schedules api runs a schedule immediately by creating a job", async () => 
   assert.equal(createdInputs[0].theme, "storm city");
   assert.equal(createdRuntimeConfigs[0].runwayApiKey, "runway-key");
 });
+
+test("schedules api updates an existing schedule", async () => {
+  const schedule = {
+    id: "schedule_1",
+    enabled: true,
+    kind: "daily",
+    time: "09:30",
+    weekday: null,
+    cronExpression: "30 9 * * *",
+    timezone: "UTC",
+    payload: {
+      theme: "storm city",
+      style: "calm",
+      durationTargetSec: 30,
+      provider: "mock"
+    },
+    nextRunAt: "2026-03-23T09:30:00.000Z",
+    lastRunAt: null,
+    lastJobId: null,
+    createdAt: "2026-03-22T08:00:00.000Z",
+    updatedAt: "2026-03-22T08:00:00.000Z"
+  };
+
+  const updates = [];
+  const store = {
+    create: async () => {
+      throw new Error("not used");
+    },
+    list: async () => [],
+    getById: async (scheduleId) => (scheduleId === "schedule_1" ? schedule : null),
+    update: async (_scheduleId, patch) => {
+      updates.push(patch);
+      return {
+        ...schedule,
+        ...patch,
+        payload: {
+          ...schedule.payload,
+          ...(patch.payload || {})
+        }
+      };
+    },
+    delete: async () => false
+  };
+
+  const api = createSchedulesApiHandlers({ store });
+  const response = await api.patch(
+    buildJsonRequest("http://localhost/api/schedules/schedule_1", {
+      kind: "weekly",
+      time: "21:15",
+      weekday: 5,
+      timezone: "UTC",
+      payload: {
+        theme: "night rain",
+        style: "noir ambience",
+        durationTargetSec: 600,
+        provider: "musicgpt"
+      }
+    }),
+    { params: { id: "schedule_1" } }
+  );
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.schedule.kind, "weekly");
+  assert.equal(payload.schedule.weekday, 5);
+  assert.equal(payload.schedule.payload.theme, "night rain");
+  assert.equal(updates.length, 1);
+});
+
+test("schedules api deletes an existing schedule", async () => {
+  const store = {
+    create: async () => {
+      throw new Error("not used");
+    },
+    list: async () => [],
+    getById: async (scheduleId) => (scheduleId === "schedule_1" ? { id: "schedule_1" } : null),
+    update: async () => null,
+    delete: async (scheduleId) => scheduleId === "schedule_1"
+  };
+
+  const api = createSchedulesApiHandlers({ store });
+  const response = await api.delete(new Request("http://localhost/api/schedules/schedule_1", { method: "DELETE" }), {
+    params: { id: "schedule_1" }
+  });
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.deleted, true);
+});

@@ -13,6 +13,7 @@ type SchedulesListProps = {
     cronExpression: string;
     nextRunAt: string;
     lastRunAt?: string | null;
+    lastJobId?: string | null;
     payload: {
       theme: string;
       style: string;
@@ -57,6 +58,16 @@ export default function SchedulesList({ schedules }: SchedulesListProps) {
     }
   }
 
+  async function deleteSchedule(id: string) {
+    try {
+      setBusyId(id);
+      await fetch(`/api/schedules/${id}`, { method: "DELETE" });
+      router.refresh();
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   if (!schedules.length) {
     return (
       <section className="card job-panel">
@@ -85,11 +96,16 @@ export default function SchedulesList({ schedules }: SchedulesListProps) {
               </span>
               <span>Next: {formatTimestamp(schedule.nextRunAt)}</span>
               <span>Last: {formatTimestamp(schedule.lastRunAt)}</span>
+              {schedule.lastJobId ? <a className="job-action" href={`/jobs/${schedule.lastJobId}`}>last-job</a> : null}
+              <a className="job-action" href={`/schedules/${schedule.id}`}>edit</a>
               <button type="button" className="job-action" onClick={() => toggleSchedule(schedule.id)} disabled={busyId === schedule.id}>
                 toggle
               </button>
               <button type="button" className="job-action" onClick={() => runNow(schedule.id)} disabled={busyId === schedule.id}>
                 run-now
+              </button>
+              <button type="button" className="job-action" onClick={() => deleteSchedule(schedule.id)} disabled={busyId === schedule.id}>
+                delete
               </button>
             </div>
           </div>

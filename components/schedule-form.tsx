@@ -3,6 +3,21 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
+type ScheduleFormProps = {
+  mode?: "create" | "edit";
+  scheduleId?: string;
+  initialValues?: {
+    kind?: string;
+    time?: string;
+    weekday?: number | null;
+    theme?: string;
+    style?: string;
+    duration?: string;
+    provider?: string;
+    publishToYouTube?: boolean;
+  };
+};
+
 function parseDurationToSeconds(rawValue: string) {
   const value = rawValue.trim().toLowerCase();
   if (!value) {
@@ -37,11 +52,15 @@ function toMessage(error: unknown) {
   return error instanceof Error ? error.message : "schedule_create_failed";
 }
 
-export default function ScheduleForm() {
+export default function ScheduleForm({
+  mode = "create",
+  scheduleId,
+  initialValues
+}: ScheduleFormProps = {}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [kind, setKind] = useState("daily");
+  const [kind, setKind] = useState(initialValues?.kind || "daily");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -65,8 +84,9 @@ export default function ScheduleForm() {
         }
       };
 
-      const response = await fetch("/api/schedules", {
-        method: "POST",
+      const endpoint = mode === "edit" && scheduleId ? `/api/schedules/${scheduleId}` : "/api/schedules";
+      const response = await fetch(endpoint, {
+        method: mode === "edit" ? "PATCH" : "POST",
         headers: {
           "content-type": "application/json"
         },
@@ -75,7 +95,7 @@ export default function ScheduleForm() {
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
-        throw new Error(body?.error || "schedule_create_failed");
+        throw new Error(body?.error || (mode === "edit" ? "schedule_update_failed" : "schedule_create_failed"));
       }
 
       router.push("/schedules");
@@ -97,13 +117,13 @@ export default function ScheduleForm() {
 
       <label>
         Time
-        <input name="time" type="time" required />
+        <input name="time" type="time" defaultValue={initialValues?.time || ""} required />
       </label>
 
       {kind === "weekly" ? (
         <label>
           Weekday
-          <select name="weekday" defaultValue="1">
+          <select name="weekday" defaultValue={String(initialValues?.weekday ?? 1)}>
             <option value="0">Sunday</option>
             <option value="1">Monday</option>
             <option value="2">Tuesday</option>
@@ -117,22 +137,22 @@ export default function ScheduleForm() {
 
       <label>
         Theme
-        <input name="theme" placeholder="storm city" required />
+        <input name="theme" placeholder="storm city" defaultValue={initialValues?.theme || ""} required />
       </label>
 
       <label>
         Style
-        <input name="style" placeholder="cinematic storm ambience" required />
+        <input name="style" placeholder="cinematic storm ambience" defaultValue={initialValues?.style || ""} required />
       </label>
 
       <label>
         Duration
-        <input name="duration" placeholder="30m" required />
+        <input name="duration" placeholder="30m" defaultValue={initialValues?.duration || ""} required />
       </label>
 
       <label>
         Provider
-        <select name="provider" defaultValue="musicgpt">
+        <select name="provider" defaultValue={initialValues?.provider || "musicgpt"}>
           <option value="musicgpt">MusicGPT</option>
           <option value="elevenlabs">ElevenLabs</option>
           <option value="mock">Mock</option>
@@ -140,14 +160,14 @@ export default function ScheduleForm() {
       </label>
 
       <label className="job-form__toggle">
-        <input type="checkbox" name="publishToYouTube" />
+        <input type="checkbox" name="publishToYouTube" defaultChecked={initialValues?.publishToYouTube || false} />
         <span>Publish to YouTube after generation</span>
       </label>
 
       {error ? <p className="job-form__error">{error}</p> : null}
 
       <button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? "Creating..." : "Create schedule"}
+        {isSubmitting ? (mode === "edit" ? "Saving..." : "Creating...") : mode === "edit" ? "Save schedule" : "Create schedule"}
       </button>
     </form>
   );

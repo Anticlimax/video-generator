@@ -84,6 +84,10 @@ function parseCreateScheduleInput(body = {}) {
   };
 }
 
+function parseUpdateScheduleInput(body = {}) {
+  return parseCreateScheduleInput(body);
+}
+
 function jsonError(error, status) {
   return Response.json({ error }, { status });
 }
@@ -201,8 +205,60 @@ export function createSchedulesApiHandlers({
       } catch (error) {
         return jsonError(String(error?.message || "schedule_run_now_failed"), 500);
       }
+    },
+
+    async patch(request, context = {}) {
+      const scheduleId = getScheduleIdFromRequest(request, context);
+      if (!scheduleId) {
+        return jsonError("missing_schedule_id", 400);
+      }
+
+      const existing = await store.getById(scheduleId);
+      if (!existing) {
+        return jsonError("schedule_not_found", 404);
+      }
+
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return jsonError("invalid_json", 400);
+      }
+
+      let input;
+      try {
+        input = parseUpdateScheduleInput(body);
+      } catch (error) {
+        return jsonError(String(error?.message || "invalid_schedule_input"), 400);
+      }
+
+      try {
+        const updated = await store.update(scheduleId, input);
+        return Response.json({ schedule: updated }, { status: 200 });
+      } catch (error) {
+        return jsonError(String(error?.message || "schedule_update_failed"), 500);
+      }
+    },
+
+    async delete(request, context = {}) {
+      const scheduleId = getScheduleIdFromRequest(request, context);
+      if (!scheduleId) {
+        return jsonError("missing_schedule_id", 400);
+      }
+
+      const existing = await store.getById(scheduleId);
+      if (!existing) {
+        return jsonError("schedule_not_found", 404);
+      }
+
+      try {
+        const deleted = await store.delete(scheduleId);
+        return Response.json({ deleted }, { status: 200 });
+      } catch (error) {
+        return jsonError(String(error?.message || "schedule_delete_failed"), 500);
+      }
     }
   };
 }
 
-export { parseCreateScheduleInput, getScheduleIdFromRequest };
+export { parseCreateScheduleInput, parseUpdateScheduleInput, getScheduleIdFromRequest };

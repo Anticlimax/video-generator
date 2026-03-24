@@ -22,3 +22,11 @@ export async function GET(request: Request, context: { params: { id: string } })
 export async function POST(request: Request, context: { params: { id: string } }) {
   return api.toggle(request, context);
 }
+
+export async function PATCH(request: Request, context: { params: { id: string } }) {
+  return api.patch(request, context);
+}
+
+export async function DELETE(request: Request, context: { params: { id: string } }) {
+  return api.delete(request, context);
+}

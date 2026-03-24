@@ -38,7 +38,16 @@ test("schedules list exposes toggle and run-now actions", () => {
 
   assert.match(listSource, /toggle/i);
   assert.match(listSource, /run-now/i);
+  assert.match(listSource, /delete/i);
+  assert.match(listSource, /\/schedules\/\$\{schedule\.id\}/);
+  assert.match(listSource, /\/jobs\/\$\{schedule\.lastJobId\}/);
   assert.match(listSource, /fetch\(/i);
   assert.match(listSource, /enabled/i);
   assert.match(listSource, /nextRunAt/i);
+});
+
+test("schedule edit page reuses the schedule form component", () => {
+  const pageSource = readText("app/schedules/[id]/page.tsx");
+  assert.match(pageSource, /from\s+["']\.\.\/\.\.\/\.\.\/components\/schedule-form["']/);
+  assert.match(pageSource, /<ScheduleForm\b/);
 });

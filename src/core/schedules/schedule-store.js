@@ -216,11 +216,21 @@ export function createScheduleStore({
     return merged;
   }
 
+  async function remove(scheduleId) {
+    const existing = await getById(scheduleId);
+    if (!existing) {
+      return false;
+    }
+    await fs.rm(path.join(rootDir, scheduleId), { recursive: true, force: true });
+    return true;
+  }
+
   return {
     rootDir,
     create,
     getById,
     list,
-    update
+    update,
+    delete: remove
   };
 }

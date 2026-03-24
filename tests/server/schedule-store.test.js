@@ -88,3 +88,30 @@ test("schedule store lists newest schedules first", async () => {
   const list = await store.list();
   assert.deepEqual(list.map((schedule) => schedule.id), [second.id, first.id]);
 });
+
+test("schedule store can delete schedules", async () => {
+  const rootDir = makeTempDir();
+  const store = createScheduleStore({
+    rootDir,
+    now: () => new Date("2026-03-22T08:00:00.000Z"),
+    randomSuffix: () => "s3c4"
+  });
+
+  const created = await store.create({
+    kind: "daily",
+    time: "09:30",
+    timezone: "UTC",
+    payload: {
+      theme: "storm city",
+      style: "calm",
+      durationTargetSec: 30,
+      provider: "mock"
+    }
+  });
+
+  const deleted = await store.delete(created.id);
+  const fetched = await store.getById(created.id);
+
+  assert.equal(deleted, true);
+  assert.equal(fetched, null);
+});
