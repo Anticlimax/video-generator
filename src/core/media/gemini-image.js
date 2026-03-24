@@ -1,5 +1,5 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import fs from "fs/promises";
+import path from "path";
 
 const DEFAULT_MODEL = "gemini-3-pro-image-preview";
 const DEFAULT_IMAGE_SIZE = "1K";
@@ -132,6 +132,14 @@ function sleep(delayMs) {
   });
 }
 
+function getRemainingBudget(deadlineMs) {
+  if (!Number.isFinite(deadlineMs)) {
+    return Infinity;
+  }
+
+  return deadlineMs - Date.now();
+}
+
 function buildModelSequence(primaryModel, fallbackModel) {
   const models = [];
 
@@ -213,6 +221,9 @@ export async function generateGeminiImage({
   const attemptLimit = Number.isFinite(Number(maxAttemptsPerModel))
     ? Math.max(1, Number(maxAttemptsPerModel))
     : DEFAULT_MAX_ATTEMPTS_PER_MODEL;
+  const totalTimeoutMs = Number(timeoutMs || 0);
+  const deadlineMs =
+    Number.isFinite(totalTimeoutMs) && totalTimeoutMs > 0 ? Date.now() + totalTimeoutMs : Infinity;
 
   let lastError = null;
   let attemptCount = 0;
@@ -246,7 +257,19 @@ export async function generateGeminiImage({
       usedModel = currentModel;
 
       try {
-        response = await withTimeout(request(currentModel), Number(timeoutMs || 0));
+        const remainingBudgetMs = getRemainingBudget(deadlineMs);
+        if (remainingBudgetMs <= 0) {
+          const timeoutError = new Error("cover_generation_timeout");
+          timeoutError.imageProvider = "gemini-image";
+          timeoutError.imageModel = usedModel || null;
+          timeoutError.imageAttemptCount = attemptCount - 1;
+          timeoutError.imageFallbackUsed = normalizeText(fallbackModel)
+            ? usedModel === normalizeText(fallbackModel)
+            : false;
+          throw timeoutError;
+        }
+
+        response = await withTimeout(request(currentModel), remainingBudgetMs);
         lastError = null;
         modelIndex = models.length;
         break;
@@ -262,14 +285,24 @@ export async function generateGeminiImage({
           break;
         }
 
-        const delayMs = Number(retryBaseDelayMs || 0) * 2 ** attempt;
+        const delayMs = Math.min(Number(retryBaseDelayMs || 0) * 2 ** attempt, Math.max(0, getRemainingBudget(deadlineMs)));
+        if (delayMs <= 0) {
+          break;
+        }
         await sleep(delayMs);
       }
     }
   }
 
   if (!response) {
-    throw lastError || new Error("cover_generation_failed");
+    const finalError = lastError || new Error("cover_generation_failed");
+    finalError.imageProvider = "gemini-image";
+    finalError.imageModel = usedModel || null;
+    finalError.imageAttemptCount = attemptCount;
+    finalError.imageFallbackUsed = normalizeText(fallbackModel)
+      ? usedModel === normalizeText(fallbackModel)
+      : false;
+    throw finalError;
   }
 
   const imageBytes = extractImageBytes(response);

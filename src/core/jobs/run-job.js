@@ -1,5 +1,5 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import fs from "fs/promises";
+import path from "path";
 
 import { generateMusic } from "../media/generate-music.js";
 import { generateCover } from "../media/generate-cover.js";
@@ -126,10 +126,12 @@ export async function runJob({
         progress: 70,
         videoImagePath: videoImageResult?.imagePath || null,
         coverImagePath: currentJob.generateSeparateCover ? null : videoImageResult?.imagePath || null,
-        imageProvider: videoImageResult?.provider || null,
-        imageModel: videoImageResult?.model || null,
-        imageAttemptCount: videoImageResult?.attemptCount ?? null,
-        imageFallbackUsed: videoImageResult?.fallbackUsed ?? null
+        imageProvider: videoImageResult?.provider || videoImageError?.imageProvider || null,
+        imageModel: videoImageResult?.model || videoImageError?.imageModel || null,
+        imageAttemptCount:
+          videoImageResult?.attemptCount ?? videoImageError?.imageAttemptCount ?? null,
+        imageFallbackUsed:
+          videoImageResult?.fallbackUsed ?? videoImageError?.imageFallbackUsed ?? null
       });
     }
 

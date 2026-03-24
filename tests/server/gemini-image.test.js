@@ -217,3 +217,35 @@ test("generateGeminiImage rejects with timeout when Gemini does not respond", as
     /cover_generation_timeout/
   );
 });
+
+test("generateGeminiImage enforces timeout as a total retry budget", async () => {
+  const rootDir = makeTempDir();
+  const outputPath = path.join(rootDir, "cover.png");
+  let callCount = 0;
+  const startedAt = Date.now();
+
+  await assert.rejects(
+    () =>
+      generateGeminiImage({
+        apiKey: "test-key",
+        prompt: "storm city at night",
+        outputPath,
+        timeoutMs: 40,
+        retryBaseDelayMs: 50,
+        maxAttemptsPerModel: 3,
+        clientFactory: () => ({
+          interactions: {
+            create: async () => {
+              callCount += 1;
+              return new Promise(() => {});
+            }
+          }
+        })
+      }),
+    /cover_generation_timeout/
+  );
+
+  const elapsedMs = Date.now() - startedAt;
+  assert.equal(callCount, 1);
+  assert.ok(elapsedMs < 250);
+});

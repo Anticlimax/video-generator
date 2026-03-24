@@ -1,31 +1,8 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import fs from "fs/promises";
+import path from "path";
 
 import { createJobWorkspace } from "../../lib/jobs.js";
 import { generateGeminiImage } from "./gemini-image.js";
-
-function withTimeout(promise, timeoutMs) {
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-    return promise;
-  }
-
-  return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error("cover_generation_timeout"));
-    }, timeoutMs);
-
-    Promise.resolve(promise).then(
-      (value) => {
-        clearTimeout(timeoutId);
-        resolve(value);
-      },
-      (error) => {
-        clearTimeout(timeoutId);
-        reject(error);
-      }
-    );
-  });
-}
 
 export function buildCoverPrompt({ theme, style, resolvedTheme }) {
   const parts = [
@@ -114,13 +91,10 @@ export async function generateCover({
           geminiRequestImpl
         });
 
-  const coverResult = await withTimeout(
-    generator({
-      outputPath: imagePath,
-      prompt: resolvedPrompt
-    }),
-    Number(runtimeConfig.coverGenerationTimeoutMs || 120000)
-  );
+  const coverResult = await generator({
+    outputPath: imagePath,
+    prompt: resolvedPrompt
+  });
 
   await fs.mkdir(path.dirname(coverResult.imagePath), { recursive: true });
 
@@ -132,6 +106,9 @@ export async function generateCover({
     themeVersion: resolvedTheme?.version || null,
     imagePath: coverResult.imagePath,
     prompt: coverResult.prompt || resolvedPrompt,
-    provider: coverResult.provider
+    provider: coverResult.provider,
+    model: coverResult.model || null,
+    attemptCount: coverResult.attemptCount ?? null,
+    fallbackUsed: coverResult.fallbackUsed ?? null
   };
 }

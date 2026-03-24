@@ -306,6 +306,56 @@ test("runJob preserves the underlying video image generation error when no rende
   assert.equal(failed?.errorMessage, "cover_generation_timeout");
 });
 
+test("runJob persists failed image generation metadata when no renderable source exists", async () => {
+  const rootDir = makeTempDir();
+  const store = createJobStore({
+    rootDir,
+    now: (() => {
+      let tick = 0;
+      return () => new Date(1773993600000 + tick++ * 1000);
+    })(),
+    randomSuffix: (() => {
+      let tick = 0;
+      return () => `f${tick++}x6`;
+    })()
+  });
+
+  const created = await store.create({
+    theme: "storm city",
+    style: "cinematic storm ambience",
+    durationTargetSec: 30,
+    provider: "mock"
+  });
+
+  const failed = await runJob({
+    jobId: created.id,
+    store,
+    generateMusicImpl: async () => ({
+      masterAudioPath: path.join(rootDir, created.id, "master_audio.wav"),
+      masterDurationSec: 30,
+      provider: "mock"
+    }),
+    generateCoverImpl: async () => {
+      const error = new Error("cover_generation_timeout");
+      error.imageProvider = "gemini-image";
+      error.imageModel = "gemini-2.5-flash-image";
+      error.imageAttemptCount = 6;
+      error.imageFallbackUsed = true;
+      throw error;
+    },
+    renderVideoImpl: async () => {
+      throw new Error("render_should_not_run_without_video_source");
+    }
+  });
+
+  assert.equal(failed?.status, "failed");
+  assert.equal(failed?.errorCode, "cover_generation_timeout");
+  assert.equal(failed?.imageProvider, "gemini-image");
+  assert.equal(failed?.imageModel, "gemini-2.5-flash-image");
+  assert.equal(failed?.imageAttemptCount, 6);
+  assert.equal(failed?.imageFallbackUsed, true);
+});
+
 test("runJob can generate a motion video and pass it into the renderer", async () => {
   const rootDir = makeTempDir();
   const store = createJobStore({
