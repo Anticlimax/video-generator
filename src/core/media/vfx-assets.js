@@ -1,4 +1,4 @@
-import path from "node:path";
+import path from "path";
 
 const DEFAULT_VFX_ASSET_ROOT = path.join(process.cwd(), "assets", "vfx");
 

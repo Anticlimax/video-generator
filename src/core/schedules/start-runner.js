@@ -1,4 +1,4 @@
-import path from "node:path";
+import path from "path";
 
 import { createJobStore } from "../jobs/job-store.js";
 import { createScheduleStore } from "./schedule-store.js";

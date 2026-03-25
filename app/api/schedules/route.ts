@@ -1,4 +1,4 @@
-import path from "node:path";
+import path from "path";
 
 import { createScheduleStore } from "../../../src/core/schedules/schedule-store.js";
 import { createSchedulesApiHandlers } from "../../../src/core/schedules/web-api.js";

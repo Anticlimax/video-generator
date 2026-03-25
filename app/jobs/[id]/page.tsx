@@ -1,4 +1,4 @@
-import path from "node:path";
+import path from "path";
 
 import { createJobStore } from "../../../src/core/jobs/job-store.js";
 import JobDetailClient from "../../../components/job-detail-client";

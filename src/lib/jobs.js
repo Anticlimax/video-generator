@@ -1,6 +1,6 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import { randomUUID } from "node:crypto";
+import fs from "fs/promises";
+import path from "path";
+import { randomUUID } from "crypto";
 
 function buildStamp(now) {
   const iso = now.toISOString();

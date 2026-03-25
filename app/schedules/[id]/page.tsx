@@ -1,4 +1,4 @@
-import path from "node:path";
+import path from "path";
 
 import ScheduleForm from "../../../components/schedule-form";
 import { createScheduleStore } from "../../../src/core/schedules/schedule-store.js";
