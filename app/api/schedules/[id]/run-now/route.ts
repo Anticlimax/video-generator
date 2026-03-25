@@ -15,6 +15,14 @@ const api = createSchedulesApiHandlers({
   runtimeConfig: resolveRuntimeConfig(process.env)
 });
 
-export async function POST(request: Request, context: { params: { id: string } }) {
-  return api.runNow(request, context);
+export async function POST(
+  request: Request,
+  context: {
+    params: Promise<{
+      id: string;
+    }>;
+  }
+) {
+  const params = await context.params;
+  return api.runNow(request, { params });
 }

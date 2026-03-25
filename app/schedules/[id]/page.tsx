@@ -4,9 +4,9 @@ import ScheduleForm from "../../../components/schedule-form";
 import { createScheduleStore } from "../../../src/core/schedules/schedule-store.js";
 
 type ScheduleDetailPageProps = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 const store = createScheduleStore({
@@ -28,14 +28,15 @@ function formatDuration(value) {
 }
 
 export default async function ScheduleDetailPage({ params }: ScheduleDetailPageProps) {
-  const schedule = await store.getById(params.id);
+  const resolvedParams = await params;
+  const schedule = await store.getById(resolvedParams.id);
 
   if (!schedule) {
     return (
       <main className="shell">
         <section className="card">
           <p className="eyebrow">Schedule</p>
-          <h1>{params.id}</h1>
+          <h1>{resolvedParams.id}</h1>
           <p className="lede">This schedule does not exist or has been removed.</p>
         </section>
       </main>

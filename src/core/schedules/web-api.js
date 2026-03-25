@@ -106,7 +106,7 @@ function getScheduleIdFromRequest(request, context = {}) {
 }
 
 export function createSchedulesApiHandlers({
-  store,
+  store = null,
   createJobImpl = createJob,
   jobStore = null,
   runtimeConfig = {}

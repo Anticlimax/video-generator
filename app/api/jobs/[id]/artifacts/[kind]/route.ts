@@ -48,14 +48,20 @@ function resolveContentType(kind, filePath) {
 
 export async function GET(
   _request: Request,
-  context: { params: { id: string; kind: string } }
+  context: {
+    params: Promise<{
+      id: string;
+      kind: string;
+    }>;
+  }
 ) {
-  const job = await store.getById(context.params.id);
+  const params = await context.params;
+  const job = await store.getById(params.id);
   if (!job) {
     return Response.json({ error: "job_not_found" }, { status: 404 });
   }
 
-  const artifactPath = resolveArtifactPath(job, context.params.kind);
+  const artifactPath = resolveArtifactPath(job, params.kind);
   if (!artifactPath) {
     return Response.json({ error: "artifact_not_found" }, { status: 404 });
   }
@@ -74,7 +80,7 @@ export async function GET(
   return new Response(fileBuffer, {
     status: 200,
     headers: {
-      "content-type": resolveContentType(context.params.kind, artifactPath),
+      "content-type": resolveContentType(params.kind, artifactPath),
       "cache-control": "no-store"
     }
   });

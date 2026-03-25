@@ -86,7 +86,7 @@ function getJobIdFromRequest(request, context = {}) {
 }
 
 export function createJobsApiHandlers({
-  store,
+  store = null,
   runtimeConfig = {},
   createJobImpl = createJob
 } = {}) {

@@ -15,18 +15,28 @@ const api = createSchedulesApiHandlers({
   runtimeConfig: resolveRuntimeConfig(process.env)
 });
 
-export async function GET(request: Request, context: { params: { id: string } }) {
-  return api.getById(request, context);
+type RouteContext = {
+  params: Promise<{
+    id: string;
+  }>;
+};
+
+export async function GET(request: Request, context: RouteContext) {
+  const params = await context.params;
+  return api.getById(request, { params });
 }
 
-export async function POST(request: Request, context: { params: { id: string } }) {
-  return api.toggle(request, context);
+export async function POST(request: Request, context: RouteContext) {
+  const params = await context.params;
+  return api.toggle(request, { params });
 }
 
-export async function PATCH(request: Request, context: { params: { id: string } }) {
-  return api.patch(request, context);
+export async function PATCH(request: Request, context: RouteContext) {
+  const params = await context.params;
+  return api.patch(request, { params });
 }
 
-export async function DELETE(request: Request, context: { params: { id: string } }) {
-  return api.delete(request, context);
+export async function DELETE(request: Request, context: RouteContext) {
+  const params = await context.params;
+  return api.delete(request, { params });
 }

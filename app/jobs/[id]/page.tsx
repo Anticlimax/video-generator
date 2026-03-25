@@ -4,9 +4,9 @@ import { createJobStore } from "../../../src/core/jobs/job-store.js";
 import JobDetailClient from "../../../components/job-detail-client";
 
 type JobDetailPageProps = {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 };
 
 const store = createJobStore({
@@ -14,14 +14,15 @@ const store = createJobStore({
 });
 
 export default async function JobDetailPage({ params }: JobDetailPageProps) {
-  const job = await store.getById(params.id);
+  const resolvedParams = await params;
+  const job = await store.getById(resolvedParams.id);
 
   if (!job) {
     return (
       <main className="shell">
         <section className="card">
           <p className="eyebrow">Job</p>
-          <h1>{params.id}</h1>
+          <h1>{resolvedParams.id}</h1>
           <p className="lede">This job does not exist or has been removed.</p>
         </section>
       </main>
