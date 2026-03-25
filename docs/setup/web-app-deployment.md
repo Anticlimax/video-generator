@@ -20,7 +20,7 @@ The deployment host runs:
 - rendered videos under `outputs/`
 - local media adapters for music, cover generation, video rendering, and optional YouTube publish
 
-Bundled VFX metadata is documented in [vfx-assets.md](/Users/liyang/project/video-generate/docs/setup/vfx-assets.md). The runtime expects the bundled rain overlay to be mounted under `assets/vfx` unless `VFX_ASSET_ROOT` overrides it.
+Bundled VFX metadata is documented in [vfx-assets.md](/Users/liyang/project/video-generate/docs/setup/vfx-assets.md). The runtime defaults to `assets/vfx`, but production should usually mount a shared asset directory and point `VFX_ASSET_ROOT` at it.
 
 ## Required Runtime
 
@@ -28,7 +28,6 @@ Install these on the deployment machine:
 
 - Node.js
 - npm
-- Python 3
 - ffmpeg
 - ffprobe
 
@@ -53,6 +52,14 @@ Recommended operational baseline:
 - run it on a machine where local file writes to the repo directory are allowed
 - keep `jobs/` and `outputs/` on persistent storage if you want history to survive restarts
 - mount bundled VFX assets on the host, or set `VFX_ASSET_ROOT` to the directory that contains them
+
+For a single-machine cloud deploy, prefer:
+
+- `next build && npm run start`
+- a process manager such as `systemd`
+- an external VFX asset root such as `/opt/ambient-video/shared/vfx`
+
+There is a GCE-oriented walkthrough in [gcp-gce-deployment.md](/Users/liyang/project/video-generate/docs/setup/gcp-gce-deployment.md).
 
 ## Bootstrap
 
@@ -154,7 +161,7 @@ Use the bundled rain overlay asset registry instead of hard-coding paths in depl
 - Default asset root: `assets/vfx`
 - Override: `VFX_ASSET_ROOT`
 - Default rain overlay pattern:
-  - `assets/vfx/RainOnGlass-004/RainOnGlass-004.%04d.exr`
+  - `<VFX_ASSET_ROOT>/RainOnGlass-004/RainOnGlass-004.%04d.exr`
 - Default rain overlay start number:
   - `1001`
 - Default rain overlay opacity:

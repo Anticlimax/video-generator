@@ -1,0 +1,20 @@
+[Unit]
+Description=Ambient Video Studio
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/ambient-video/app
+Environment=NODE_ENV=production
+Environment=PORT=3334
+EnvironmentFile=/opt/ambient-video/app/.env.production
+ExecStart=/usr/bin/env npm run start
+Restart=always
+RestartSec=5
+# Adjust these to the account that owns /opt/ambient-video/app.
+User=www-data
+Group=www-data
+UMask=0022
+
+[Install]
+WantedBy=multi-user.target

@@ -31,11 +31,15 @@ You can override that with:
 
 - `VFX_ASSET_ROOT`
 
+For production, prefer an external shared directory such as:
+
+- `/opt/ambient-video/shared/vfx`
+
 Example layout:
 
 ```text
-assets/vfx/RainOnGlass-004/RainOnGlass-004.1001.exr
-assets/vfx/Rain-022/Rain-022.1001.exr
+/opt/ambient-video/shared/vfx/RainOnGlass-004/RainOnGlass-004.1001.exr
+/opt/ambient-video/shared/vfx/Rain-022/Rain-022.1001.exr
 ```
 
 ## Current Recommendation
