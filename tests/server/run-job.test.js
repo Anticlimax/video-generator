@@ -472,7 +472,7 @@ test("runJob keeps running when motion generation fails and renders the static i
   assert.equal(completed.finalVideoPath, path.join(rootDir, "outputs", "storm-city.mp4"));
 });
 
-test("runJob prefers bundled VFX overlay motion for rain scenes", async () => {
+test("runJob applies bundled VFX overlay motion for rain scenes even when explicit motion is off", async () => {
   const rootDir = makeTempDir();
   const store = createJobStore({
     rootDir,
@@ -490,8 +490,7 @@ test("runJob prefers bundled VFX overlay motion for rain scenes", async () => {
     theme: "rainy city",
     style: "quiet ambient",
     durationTargetSec: 30,
-    provider: "mock",
-    generateMotionVideo: true
+    provider: "mock"
   });
 
   const overlayPattern = path.join(rootDir, "assets", "RainOnGlass-004.%04d.exr");

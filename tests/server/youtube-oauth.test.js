@@ -119,11 +119,11 @@ test("uploadYoutubeVideoOAuth fails when token refresh fails", async () => {
         clientSecret: "client-secret",
         refreshToken: "refresh-token",
         fetchImpl: async () =>
-          new Response(JSON.stringify({ error: "invalid_grant" }), {
+          new Response(JSON.stringify({ error: "invalid_grant", error_description: "Token has been expired or revoked." }), {
             status: 400,
             headers: { "content-type": "application/json" }
           })
       }),
-    /youtube_token_refresh_failed/
+    /youtube_token_refresh_failed:invalid_grant:Token has been expired or revoked\./
   );
 });

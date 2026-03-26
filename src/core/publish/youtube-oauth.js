@@ -57,8 +57,13 @@ export async function uploadYoutubeVideoOAuth({
 
   if (!tokenResponse.ok) {
     const tokenError = await parseJsonResponse(tokenResponse);
+    const errorParts = [
+      "youtube_token_refresh_failed",
+      tokenError?.error ? String(tokenError.error) : "",
+      tokenError?.error_description ? String(tokenError.error_description) : ""
+    ].filter(Boolean);
     throw new Error(
-      `youtube_token_refresh_failed${tokenError?.error ? `:${String(tokenError.error)}` : ""}`
+      errorParts.join(":")
     );
   }
 

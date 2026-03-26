@@ -96,6 +96,8 @@ export async function runJob({
     let videoImageError = null;
     let coverResult = null;
     let motionVideoResult = null;
+    let shouldGenerateMotion = false;
+    let resolvedMotionClipDurationSec = null;
     try {
       await store.update(jobId, {
         status: "running",
@@ -135,8 +137,31 @@ export async function runJob({
       });
     }
 
-    if (currentJob.generateMotionVideo && videoImageResult?.imagePath) {
+    if (videoImageResult?.imagePath) {
+      const presets = resolveMotionPresets({
+        theme: currentJob.theme,
+        style: currentJob.style,
+        videoVisualPrompt: currentJob.videoVisualPrompt || ""
+      });
       const motionClipDurationSec = Number(runtimeConfig.motionClipDurationSec || 5);
+      const rainOverlayPattern = String(runtimeConfig.rainVfxOverlayPattern || "").trim();
+      const canUseRainVfx =
+        presets.primaryPreset === "rain" &&
+        rainOverlayPattern &&
+        (await pathExists(
+          rainOverlayPattern.replace(
+            "%04d",
+            String(runtimeConfig.rainVfxStartNumber || 1001).padStart(4, "0")
+          )
+        ));
+      const shouldUseAiMotion = Boolean(currentJob.generateMotionVideo) && !canUseRainVfx;
+
+      shouldGenerateMotion = canUseRainVfx || shouldUseAiMotion;
+      resolvedMotionClipDurationSec = shouldGenerateMotion ? motionClipDurationSec : null;
+    }
+
+    if (shouldGenerateMotion && videoImageResult?.imagePath) {
+      const motionClipDurationSec = resolvedMotionClipDurationSec || Number(runtimeConfig.motionClipDurationSec || 5);
       try {
         await store.update(jobId, {
           status: "running",
@@ -211,7 +236,7 @@ export async function runJob({
         await store.update(jobId, {
           status: "running",
           stage: "cover_generating",
-          progress: currentJob.generateMotionVideo ? 82 : 75
+          progress: shouldGenerateMotion ? 82 : 75
         });
 
         coverResult = await generateCoverImpl({
@@ -233,7 +258,7 @@ export async function runJob({
         await store.update(jobId, {
           status: "running",
           stage: "cover_ready",
-          progress: currentJob.generateMotionVideo ? 86 : 80,
+          progress: shouldGenerateMotion ? 86 : 80,
           coverImagePath: coverResult?.imagePath || videoImageResult?.imagePath || null
         });
       }
