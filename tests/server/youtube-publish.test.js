@@ -99,6 +99,57 @@ test("publishVideo uses the node oauth uploader by default", async () => {
   assert.equal(result.studioUrl, "https://studio.youtube.com/video/abc999/edit");
 });
 
+test("publishVideo falls back to a safe non-empty title when theme and style are blank", async () => {
+  const videoPath = path.join(makeTempDir(), "final.mp4");
+  fs.writeFileSync(videoPath, "video");
+
+  let capturedInput = null;
+  await publishVideo({
+    videoPath,
+    theme: "   ",
+    style: "   ",
+    title: "   ",
+    runtimeConfig: {
+      youtubeUploadImpl: async (input) => {
+        capturedInput = input;
+        return {
+          videoId: "safe123",
+          url: "https://www.youtube.com/watch?v=safe123",
+          studioUrl: "https://studio.youtube.com/video/safe123/edit"
+        };
+      }
+    }
+  });
+
+  assert.ok(capturedInput.title.length > 0);
+  assert.equal(capturedInput.title, "Ambient video");
+});
+
+test("publishVideo truncates overlong titles before upload", async () => {
+  const videoPath = path.join(makeTempDir(), "final.mp4");
+  fs.writeFileSync(videoPath, "video");
+
+  const longTheme = "a".repeat(120);
+  let capturedInput = null;
+  await publishVideo({
+    videoPath,
+    theme: longTheme,
+    style: "cinematic ambient",
+    runtimeConfig: {
+      youtubeUploadImpl: async (input) => {
+        capturedInput = input;
+        return {
+          videoId: "trim123",
+          url: "https://www.youtube.com/watch?v=trim123",
+          studioUrl: "https://studio.youtube.com/video/trim123/edit"
+        };
+      }
+    }
+  });
+
+  assert.ok(capturedInput.title.length <= 100);
+});
+
 test("runJob publishes to YouTube when requested and keeps the core job completed", async () => {
   const rootDir = makeTempDir();
   const store = createJobStore({

@@ -17,17 +17,26 @@ function normalizeTags(tags) {
   return [];
 }
 
+function normalizeYoutubeTitle(value) {
+  const compact = trimText(value).replace(/\s+/gu, " ");
+  const fallback = compact || "Ambient video";
+  return fallback.slice(0, 100).trim() || "Ambient video";
+}
+
 function buildYoutubeMetadata({ theme, style, resolvedTheme }) {
   const normalizedTheme = trimText(theme);
   const normalizedStyle = trimText(style);
   const fallbackTheme = trimText(resolvedTheme?.label || resolvedTheme?.id || "Ambient");
 
-  const title =
+  const title = normalizeYoutubeTitle(
     normalizedTheme && normalizedStyle
       ? `${normalizedTheme} - ${normalizedStyle}`
       : normalizedTheme
         ? `${normalizedTheme} ambient video`
-        : `${fallbackTheme} ambient video`;
+        : fallbackTheme.toLowerCase() === "ambient"
+          ? "Ambient video"
+          : `${fallbackTheme} ambient video`
+  );
 
   const description = [
     `Theme: ${normalizedTheme || fallbackTheme.toLowerCase() || "custom"}`,
@@ -128,7 +137,7 @@ export async function publishVideo({
   const metadata = buildYoutubeMetadata({ theme, style, resolvedTheme });
   const uploadInput = {
     videoPath: normalizedVideoPath,
-    title: trimText(title) || metadata.title,
+    title: normalizeYoutubeTitle(trimText(title) || metadata.title),
     description: trimText(description) || metadata.description,
     tags: normalizeTags(tags).length > 0 ? normalizeTags(tags) : metadata.tags,
     privacyStatus: trimText(privacyStatus) || metadata.privacyStatus,
@@ -165,4 +174,4 @@ export async function publishVideo({
   };
 }
 
-export { buildYoutubeMetadata, normalizeTags, parseUploadOutput };
+export { buildYoutubeMetadata, normalizeTags, normalizeYoutubeTitle, parseUploadOutput };
