@@ -16,6 +16,20 @@ async function parseJsonResponse(response) {
   }
 }
 
+function describeYoutubeHttpError(prefix, status, payload) {
+  const detail =
+    payload?.error?.message ||
+    payload?.error_description ||
+    payload?.error ||
+    payload?.raw ||
+    "";
+  const reason =
+    Array.isArray(payload?.error?.errors) && payload.error.errors.length > 0
+      ? payload.error.errors.map((entry) => entry?.reason).filter(Boolean).join(",")
+      : "";
+  return [prefix, String(status || ""), String(detail).trim(), reason].filter(Boolean).join(":");
+}
+
 export async function uploadYoutubeVideoOAuth({
   videoPath,
   title,
@@ -99,7 +113,8 @@ export async function uploadYoutubeVideoOAuth({
   );
 
   if (!initResponse.ok) {
-    throw new Error("youtube_upload_init_failed");
+    const initError = await parseJsonResponse(initResponse);
+    throw new Error(describeYoutubeHttpError("youtube_upload_init_failed", initResponse.status, initError));
   }
 
   const uploadUrl = initResponse.headers.get("location");
@@ -117,7 +132,8 @@ export async function uploadYoutubeVideoOAuth({
   });
 
   if (!uploadResponse.ok) {
-    throw new Error("youtube_upload_failed");
+    const uploadError = await parseJsonResponse(uploadResponse);
+    throw new Error(describeYoutubeHttpError("youtube_upload_failed", uploadResponse.status, uploadError));
   }
 
   const uploadPayload = await parseJsonResponse(uploadResponse);

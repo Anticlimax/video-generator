@@ -127,3 +127,47 @@ test("uploadYoutubeVideoOAuth fails when token refresh fails", async () => {
     /youtube_token_refresh_failed:invalid_grant:Token has been expired or revoked\./
   );
 });
+
+test("uploadYoutubeVideoOAuth surfaces init upload failure details", async () => {
+  const rootDir = makeTempDir();
+  const videoPath = path.join(rootDir, "video.mp4");
+  fs.writeFileSync(videoPath, "video");
+
+  await assert.rejects(
+    () =>
+      uploadYoutubeVideoOAuth({
+        videoPath,
+        title: "storm city",
+        description: "ambient storm city",
+        tags: ["storm city"],
+        privacyStatus: "private",
+        category: "10",
+        clientId: "client-id",
+        clientSecret: "client-secret",
+        refreshToken: "refresh-token",
+        fetchImpl: async (url) => {
+          if (String(url) === "https://oauth2.googleapis.com/token") {
+            return new Response(JSON.stringify({ access_token: "access-123" }), {
+              status: 200,
+              headers: { "content-type": "application/json" }
+            });
+          }
+
+          return new Response(
+            JSON.stringify({
+              error: {
+                code: 403,
+                message: "The request cannot be completed because you have exceeded your quota.",
+                errors: [{ reason: "quotaExceeded" }]
+              }
+            }),
+            {
+              status: 403,
+              headers: { "content-type": "application/json" }
+            }
+          );
+        }
+      }),
+    /youtube_upload_init_failed:403:.*quotaExceeded/
+  );
+});
