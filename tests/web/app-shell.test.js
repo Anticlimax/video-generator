@@ -26,3 +26,10 @@ test("web app shell has next scripts and core app routes", () => {
   assert.ok(fs.existsSync(path.join(projectRoot, "app/jobs/page.tsx")));
   assert.ok(fs.existsSync(path.join(projectRoot, "app/jobs/[id]/page.tsx")));
 });
+
+test("root layout includes the global app navigation", () => {
+  const layoutSource = fs.readFileSync(path.join(projectRoot, "app/layout.tsx"), "utf8");
+
+  assert.match(layoutSource, /AppNav/);
+  assert.ok(fs.existsSync(path.join(projectRoot, "components/app-nav.tsx")));
+});
