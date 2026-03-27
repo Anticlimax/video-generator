@@ -20,7 +20,6 @@ export default async function HomePage() {
             style: dictionary.home.style,
             duration: dictionary.home.duration,
             durationHint: dictionary.home.durationHint,
-            videoVisualPrompt: dictionary.home.videoVisualPrompt,
             provider: dictionary.home.provider,
             publishToYouTube: dictionary.home.publishToYouTube,
             randomize: dictionary.home.randomize,

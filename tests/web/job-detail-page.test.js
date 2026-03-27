@@ -46,7 +46,7 @@ test("job detail page uses status and result components", () => {
   assert.match(artifactRouteSource, /readFile/i);
   assert.match(artifactRouteSource, /content-type/i);
   assert.match(artifactRouteSource, /video-image/i);
-  assert.match(formSource, /videoVisualPrompt/i);
+  assert.doesNotMatch(formSource, /videoVisualPrompt/i);
   assert.doesNotMatch(formSource, /generateSeparateCover/i);
   assert.doesNotMatch(formSource, /coverPrompt/i);
 });

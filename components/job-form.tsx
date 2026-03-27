@@ -43,7 +43,6 @@ type JobFormProps = {
     style: string;
     duration: string;
     durationHint: string;
-    videoVisualPrompt: string;
     provider: string;
     publishToYouTube: string;
     randomize: string;
@@ -92,7 +91,6 @@ export default function JobForm({ copy }: JobFormProps) {
     const durationRaw = String(formData.get("duration") || "").trim();
     const provider = String(formData.get("provider") || "musicgpt").trim();
     const publishToYouTube = formData.get("publishToYouTube") === "on";
-    const videoVisualPrompt = String(formData.get("videoVisualPrompt") || "").trim();
 
     try {
       const payload = {
@@ -100,8 +98,7 @@ export default function JobForm({ copy }: JobFormProps) {
         style: styleValue,
         durationTargetSec: parseDurationToSeconds(durationRaw),
         provider,
-        publishToYouTube,
-        videoVisualPrompt
+        publishToYouTube
       };
 
       const response = await fetch("/api/jobs", {
@@ -162,15 +159,6 @@ export default function JobForm({ copy }: JobFormProps) {
         {copy.duration}
         <input name="duration" placeholder="30m or 1800" required />
         <span className="form-hint">{copy.durationHint}</span>
-      </label>
-
-      <label>
-        {copy.videoVisualPrompt}
-        <textarea
-          name="videoVisualPrompt"
-          placeholder="storm clouds over neon towers"
-          rows={4}
-        />
       </label>
 
       <label>
