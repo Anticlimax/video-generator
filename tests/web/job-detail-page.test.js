@@ -31,12 +31,12 @@ test("job detail page uses status and result components", () => {
   assert.match(resultSource, /cover/i);
   assert.match(resultSource, /video/i);
   assert.match(resultSource, /error/i);
-  assert.match(resultSource, /motion provider/i);
-  assert.match(resultSource, /VFX asset/i);
-  assert.match(resultSource, /视频画面图/i);
-  assert.match(resultSource, /封面图/i);
-  assert.match(resultSource, /微动视频/i);
-  assert.match(resultSource, /复用/i);
+  assert.match(resultSource, /copy\.motionProvider/i);
+  assert.match(resultSource, /copy\.vfxAsset/i);
+  assert.match(resultSource, /copy\.videoImage/i);
+  assert.match(resultSource, /copy\.coverImage/i);
+  assert.match(resultSource, /copy\.motionVideo/i);
+  assert.match(resultSource, /copy\.coverReused/i);
   assert.match(resultSource, /<img/i);
   assert.match(resultSource, /<video/i);
   assert.match(resultSource, /artifacts\/video-image/i);
@@ -47,6 +47,6 @@ test("job detail page uses status and result components", () => {
   assert.match(artifactRouteSource, /content-type/i);
   assert.match(artifactRouteSource, /video-image/i);
   assert.match(formSource, /videoVisualPrompt/i);
-  assert.match(formSource, /generateSeparateCover/i);
-  assert.match(formSource, /coverPrompt/i);
+  assert.doesNotMatch(formSource, /generateSeparateCover/i);
+  assert.doesNotMatch(formSource, /coverPrompt/i);
 });

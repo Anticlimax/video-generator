@@ -32,4 +32,6 @@ test("root layout includes the global app navigation", () => {
 
   assert.match(layoutSource, /AppNav/);
   assert.ok(fs.existsSync(path.join(projectRoot, "components/app-nav.tsx")));
+  assert.ok(fs.existsSync(path.join(projectRoot, "components/language-switcher.tsx")));
+  assert.ok(fs.existsSync(path.join(projectRoot, "src/i18n/index.ts")));
 });

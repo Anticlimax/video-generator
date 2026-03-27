@@ -1,50 +1,53 @@
+import { cookies } from "next/headers";
+import { defaultLocale, getDictionary, localeCookieName, normalizeLocale } from "../../src/i18n";
+
 function envStatus(value?: string) {
-  return String(value || "").trim() ? "Configured" : "Missing";
+  return String(value || "").trim();
 }
 
-const integrations = [
-  {
-    label: "Gemini image generation",
-    envKey: "GEMINI_API_KEY",
-    status: envStatus(process.env.GEMINI_API_KEY)
-  },
-  {
-    label: "MusicGPT audio generation",
-    envKey: "MUSICGPT_API_KEY",
-    status: envStatus(process.env.MUSICGPT_API_KEY)
-  },
-  {
-    label: "Runway motion video",
-    envKey: "RUNWAY_API_KEY",
-    status: envStatus(process.env.RUNWAY_API_KEY)
-  },
-  {
-    label: "YouTube OAuth client id",
-    envKey: "YOUTUBE_CLIENT_ID",
-    status: envStatus(process.env.YOUTUBE_CLIENT_ID)
-  },
-  {
-    label: "YouTube OAuth client secret",
-    envKey: "YOUTUBE_CLIENT_SECRET",
-    status: envStatus(process.env.YOUTUBE_CLIENT_SECRET)
-  },
-  {
-    label: "YouTube refresh token",
-    envKey: "YOUTUBE_REFRESH_TOKEN",
-    status: envStatus(process.env.YOUTUBE_REFRESH_TOKEN)
-  }
-];
+export default async function IntegrationsPage() {
+  const cookieStore = await cookies();
+  const locale = normalizeLocale(cookieStore.get(localeCookieName)?.value || defaultLocale);
+  const dictionary = getDictionary(locale);
+  const integrations = [
+    {
+      label: "Gemini image generation",
+      envKey: "GEMINI_API_KEY",
+      configured: envStatus(process.env.GEMINI_API_KEY)
+    },
+    {
+      label: "MusicGPT audio generation",
+      envKey: "MUSICGPT_API_KEY",
+      configured: envStatus(process.env.MUSICGPT_API_KEY)
+    },
+    {
+      label: "Runway motion video",
+      envKey: "RUNWAY_API_KEY",
+      configured: envStatus(process.env.RUNWAY_API_KEY)
+    },
+    {
+      label: "YouTube OAuth client id",
+      envKey: "YOUTUBE_CLIENT_ID",
+      configured: envStatus(process.env.YOUTUBE_CLIENT_ID)
+    },
+    {
+      label: "YouTube OAuth client secret",
+      envKey: "YOUTUBE_CLIENT_SECRET",
+      configured: envStatus(process.env.YOUTUBE_CLIENT_SECRET)
+    },
+    {
+      label: "YouTube refresh token",
+      envKey: "YOUTUBE_REFRESH_TOKEN",
+      configured: envStatus(process.env.YOUTUBE_REFRESH_TOKEN)
+    }
+  ];
 
-export default function IntegrationsPage() {
   return (
     <main className="shell">
       <section className="hero">
-        <p className="eyebrow">Integrations</p>
-        <h1>Check which runtime providers are configured.</h1>
-        <p className="lede">
-          This page is read-only. Configure values through environment variables, then restart the
-          app.
-        </p>
+        <p className="eyebrow">{dictionary.integrations.eyebrow}</p>
+        <h1>{dictionary.integrations.title}</h1>
+        <p className="lede">{dictionary.integrations.lede}</p>
 
         <section className="card integrations-card">
           <div className="integrations-grid">
@@ -56,10 +59,10 @@ export default function IntegrationsPage() {
                 </div>
                 <span
                   className={`job-badge ${
-                    integration.status === "Configured" ? "job-badge--completed" : "job-badge--failed"
+                    integration.configured ? "job-badge--completed" : "job-badge--failed"
                   }`}
                 >
-                  {integration.status}
+                  {integration.configured ? dictionary.integrations.configured : dictionary.integrations.missing}
                 </span>
               </article>
             ))}
@@ -67,14 +70,11 @@ export default function IntegrationsPage() {
         </section>
 
         <section className="card">
-          <h2>YouTube OAuth</h2>
-          <p className="lede">
-            Use the setup guide to obtain a refresh token and map it into environment variables for
-            VPS or Google Cloud deployment.
-          </p>
+          <h2>{dictionary.integrations.youtubeOauth}</h2>
+          <p className="lede">{dictionary.integrations.youtubeGuideLede}</p>
           <p>
             <a href="/Users/liyang/project/video-generate/docs/setup/youtube-oauth.md">
-              Open YouTube OAuth setup guide
+              {dictionary.integrations.youtubeGuide}
             </a>
           </p>
         </section>

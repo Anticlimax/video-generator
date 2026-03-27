@@ -13,7 +13,7 @@ function readText(relativePath) {
 test("home page uses a dedicated job form component", () => {
   const pageSource = readText("app/page.tsx");
   assert.match(pageSource, /from\s+["']\.\.\/components\/job-form["']/);
-  assert.match(pageSource, /<JobForm\s*\/>/);
+  assert.match(pageSource, /<JobForm\b/);
 });
 
 test("job form exposes the required fields and submits to jobs api", () => {
@@ -25,9 +25,16 @@ test("job form exposes the required fields and submits to jobs api", () => {
   assert.match(formSource, /name=["']provider["']/);
   assert.match(formSource, /name=["']publishToYouTube["']/);
   assert.match(formSource, /name=["']videoVisualPrompt["']/);
-  assert.match(formSource, /name=["']generateSeparateCover["']/);
-  assert.match(formSource, /name=["']coverPrompt["']/);
+  assert.doesNotMatch(formSource, /name=["']generateSeparateCover["']/);
+  assert.doesNotMatch(formSource, /name=["']coverPrompt["']/);
   assert.doesNotMatch(formSource, /name=["']generateMotionVideo["']/);
   assert.match(formSource, /type=["']submit["']/);
   assert.match(formSource, /\/api\/jobs/);
+});
+
+test("job form clarifies accepted duration formats", () => {
+  const formSource = readText("components/job-form.tsx");
+
+  assert.match(formSource, /placeholder=["']30m or 1800["']/);
+  assert.match(formSource, /durationHint/);
 });

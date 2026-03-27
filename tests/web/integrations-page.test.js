@@ -20,8 +20,8 @@ test("integrations page exists and surfaces provider env status", () => {
   assert.match(pageSource, /YOUTUBE_CLIENT_ID/);
   assert.match(pageSource, /YOUTUBE_CLIENT_SECRET/);
   assert.match(pageSource, /YOUTUBE_REFRESH_TOKEN/);
-  assert.match(pageSource, /configured/i);
-  assert.match(pageSource, /missing/i);
+  assert.match(pageSource, /dictionary\.integrations\.configured/i);
+  assert.match(pageSource, /dictionary\.integrations\.missing/i);
 });
 
 test("integrations page links to youtube oauth setup guidance", () => {

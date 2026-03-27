@@ -37,12 +37,27 @@ function toMessage(error) {
   return error instanceof Error ? error.message : "job_create_failed";
 }
 
-export default function JobForm() {
+type JobFormProps = {
+  copy: {
+    theme: string;
+    style: string;
+    duration: string;
+    durationHint: string;
+    videoVisualPrompt: string;
+    provider: string;
+    publishToYouTube: string;
+    randomize: string;
+    randomizing: string;
+    generate: string;
+    generating: string;
+  };
+};
+
+export default function JobForm({ copy }: JobFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRandomizing, setIsRandomizing] = useState(false);
-  const [generateSeparateCover, setGenerateSeparateCover] = useState(false);
   const [theme, setTheme] = useState("");
   const [style, setStyle] = useState("");
 
@@ -78,8 +93,6 @@ export default function JobForm() {
     const provider = String(formData.get("provider") || "musicgpt").trim();
     const publishToYouTube = formData.get("publishToYouTube") === "on";
     const videoVisualPrompt = String(formData.get("videoVisualPrompt") || "").trim();
-    const generateSeparateCoverValue = formData.get("generateSeparateCover") === "on";
-    const coverPrompt = String(formData.get("coverPrompt") || "").trim();
 
     try {
       const payload = {
@@ -88,9 +101,7 @@ export default function JobForm() {
         durationTargetSec: parseDurationToSeconds(durationRaw),
         provider,
         publishToYouTube,
-        videoVisualPrompt,
-        generateSeparateCover: generateSeparateCoverValue,
-        coverPrompt
+        videoVisualPrompt
       };
 
       const response = await fetch("/api/jobs", {
@@ -122,7 +133,7 @@ export default function JobForm() {
   return (
     <form className="card form job-form" onSubmit={handleSubmit}>
       <label>
-        Theme
+        {copy.theme}
         <input
           name="theme"
           placeholder="storm city"
@@ -133,7 +144,7 @@ export default function JobForm() {
       </label>
 
       <label>
-        Style
+        {copy.style}
         <input
           name="style"
           placeholder="cinematic storm ambience"
@@ -144,16 +155,17 @@ export default function JobForm() {
       </label>
 
       <button type="button" className="job-action" onClick={handleRandomize} disabled={isRandomizing || isSubmitting}>
-        {isRandomizing ? "Randomizing..." : "Randomize theme + style"}
+        {isRandomizing ? copy.randomizing : copy.randomize}
       </button>
 
       <label>
-        Duration
-        <input name="duration" placeholder="30m" required />
+        {copy.duration}
+        <input name="duration" placeholder="30m or 1800" required />
+        <span className="form-hint">{copy.durationHint}</span>
       </label>
 
       <label>
-        视频画面描述
+        {copy.videoVisualPrompt}
         <textarea
           name="videoVisualPrompt"
           placeholder="storm clouds over neon towers"
@@ -162,7 +174,7 @@ export default function JobForm() {
       </label>
 
       <label>
-        Provider
+        {copy.provider}
         <select name="provider" defaultValue="musicgpt">
           <option value="musicgpt">MusicGPT</option>
           <option value="elevenlabs">ElevenLabs</option>
@@ -172,34 +184,13 @@ export default function JobForm() {
 
       <label className="job-form__toggle">
         <input type="checkbox" name="publishToYouTube" />
-        <span>Publish to YouTube after generation</span>
+        <span>{copy.publishToYouTube}</span>
       </label>
-
-      <label className="job-form__toggle">
-        <input
-          type="checkbox"
-          name="generateSeparateCover"
-          checked={generateSeparateCover}
-          onChange={(event) => setGenerateSeparateCover(event.target.checked)}
-        />
-        <span>单独生成封面图</span>
-        </label>
-
-      {generateSeparateCover ? (
-        <label>
-          封面图描述
-          <textarea
-            name="coverPrompt"
-            placeholder="cinematic thunderstorm poster art"
-            rows={4}
-          />
-        </label>
-      ) : null}
 
       {error ? <p className="job-form__error">{error}</p> : null}
 
       <button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? "Generating..." : "Generate"}
+        {isSubmitting ? copy.generating : copy.generate}
       </button>
     </form>
   );

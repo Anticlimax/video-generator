@@ -4,6 +4,21 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type SchedulesListProps = {
+  copy: {
+    empty: string;
+    enabled: string;
+    disabled: string;
+    next: string;
+    last: string;
+    never: string;
+    lastJob: string;
+    edit: string;
+    toggle: string;
+    runNow: string;
+    delete: string;
+    daily: string;
+    weekly: string;
+  };
   schedules: Array<{
     id: string;
     enabled: boolean;
@@ -25,7 +40,7 @@ type SchedulesListProps = {
 
 function formatTimestamp(value: string | null | undefined) {
   if (!value) {
-    return "never";
+    return "";
   }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -34,7 +49,7 @@ function formatTimestamp(value: string | null | undefined) {
   return date.toLocaleString();
 }
 
-export default function SchedulesList({ schedules }: SchedulesListProps) {
+export default function SchedulesList({ schedules, copy }: SchedulesListProps) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -71,7 +86,7 @@ export default function SchedulesList({ schedules }: SchedulesListProps) {
   if (!schedules.length) {
     return (
       <section className="card job-panel">
-        <p className="lede">No schedules yet. Create the first recurring generation above.</p>
+        <p className="lede">{copy.empty}</p>
       </section>
     );
   }
@@ -87,25 +102,25 @@ export default function SchedulesList({ schedules }: SchedulesListProps) {
                 {schedule.payload.style} · {Math.round(schedule.payload.durationTargetSec)}s · {schedule.payload.provider}
               </span>
               <span>
-                {schedule.kind} · {schedule.time} · cron {schedule.cronExpression}
+                {(schedule.kind === "weekly" ? copy.weekly : copy.daily)} · {schedule.time} · cron {schedule.cronExpression}
               </span>
             </div>
             <div className="job-table__meta">
               <span className={`job-badge job-badge--${schedule.enabled ? "completed" : "queued"}`}>
-                {schedule.enabled ? "enabled" : "disabled"}
+                {schedule.enabled ? copy.enabled : copy.disabled}
               </span>
-              <span>Next: {formatTimestamp(schedule.nextRunAt)}</span>
-              <span>Last: {formatTimestamp(schedule.lastRunAt)}</span>
-              {schedule.lastJobId ? <a className="job-action" href={`/jobs/${schedule.lastJobId}`}>last-job</a> : null}
-              <a className="job-action" href={`/schedules/${schedule.id}`}>edit</a>
+              <span>{copy.next}: {formatTimestamp(schedule.nextRunAt) || copy.never}</span>
+              <span>{copy.last}: {formatTimestamp(schedule.lastRunAt) || copy.never}</span>
+              {schedule.lastJobId ? <a className="job-action" href={`/jobs/${schedule.lastJobId}`}>{copy.lastJob}</a> : null}
+              <a className="job-action" href={`/schedules/${schedule.id}`}>{copy.edit}</a>
               <button type="button" className="job-action" onClick={() => toggleSchedule(schedule.id)} disabled={busyId === schedule.id}>
-                toggle
+                {copy.toggle}
               </button>
               <button type="button" className="job-action" onClick={() => runNow(schedule.id)} disabled={busyId === schedule.id}>
-                run-now
+                {copy.runNow}
               </button>
               <button type="button" className="job-action" onClick={() => deleteSchedule(schedule.id)} disabled={busyId === schedule.id}>
-                delete
+                {copy.delete}
               </button>
             </div>
           </div>

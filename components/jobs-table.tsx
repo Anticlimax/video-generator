@@ -1,4 +1,9 @@
 type JobsTableProps = {
+  copy: {
+    empty: string;
+    statusLabels: Record<string, string>;
+    stageLabels: Record<string, string>;
+  };
   jobs: Array<{
     id: string;
     theme: string;
@@ -26,11 +31,11 @@ function clampProgress(progress: number) {
   return Math.max(0, Math.min(100, Math.round(progress)));
 }
 
-export default function JobsTable({ jobs }: JobsTableProps) {
+export default function JobsTable({ jobs, copy }: JobsTableProps) {
   if (!jobs.length) {
     return (
       <section className="card job-panel">
-        <p className="lede">No jobs yet. Create the first generation from the home page.</p>
+        <p className="lede">{copy.empty}</p>
       </section>
     );
   }
@@ -50,8 +55,8 @@ export default function JobsTable({ jobs }: JobsTableProps) {
                 </span>
               </div>
               <div className="job-table__meta">
-                <span className={`job-badge job-badge--${job.status}`}>{job.status}</span>
-                <span>{job.stage}</span>
+                <span className={`job-badge job-badge--${job.status}`}>{copy.statusLabels[job.status] || job.status}</span>
+                <span>{copy.stageLabels[job.stage] || job.stage}</span>
                 <span>{progress}%</span>
                 <span>{formatTimestamp(job.createdAt)}</span>
               </div>

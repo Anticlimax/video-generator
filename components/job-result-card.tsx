@@ -1,4 +1,21 @@
 type JobResultCardProps = {
+  copy: {
+    result: string;
+    artifacts: string;
+    motionProvider: string;
+    motionPreset: string;
+    vfxAsset: string;
+    videoImage: string;
+    coverImage: string;
+    coverReused: string;
+    motionVideo: string;
+    masterAudio: string;
+    finalVideo: string;
+    youtubeVideoId: string;
+    errorCode: string;
+    errorMessage: string;
+    openYouTubeVideo: string;
+  };
   job: {
     id: string;
     videoImagePath?: string | null;
@@ -32,7 +49,7 @@ function ResultRow({ label, value }: { label: string; value: string | null | und
   );
 }
 
-export default function JobResultCard({ job }: JobResultCardProps) {
+export default function JobResultCard({ copy, job }: JobResultCardProps) {
   const videoImageUrl = job.videoImagePath ? `/api/jobs/${job.id}/artifacts/video-image` : null;
   const coverUrl = job.coverImagePath ? `/api/jobs/${job.id}/artifacts/cover` : null;
   const motionVideoUrl = job.motionVideoPath ? `/api/jobs/${job.id}/artifacts/motion-video` : null;
@@ -44,22 +61,22 @@ export default function JobResultCard({ job }: JobResultCardProps) {
     <section className="card job-panel">
       <div className="job-panel__header">
         <div>
-          <p className="eyebrow">Result</p>
-          <h2>Artifacts</h2>
+          <p className="eyebrow">{copy.result}</p>
+          <h2>{copy.artifacts}</h2>
         </div>
       </div>
 
       {videoImageUrl ? (
         <div className="job-preview">
           <img src={videoImageUrl} alt="Generated video image preview" className="job-preview__image" />
-          <p className="job-preview__note">视频画面图</p>
+          <p className="job-preview__note">{copy.videoImage}</p>
         </div>
       ) : null}
 
       {coverUrl ? (
         <div className="job-preview">
           <img src={coverUrl} alt="Generated cover preview" className="job-preview__image" />
-          {coverReusesVideoImage ? <p className="job-preview__note">封面复用视频画面图</p> : <p className="job-preview__note">封面图</p>}
+          {coverReusesVideoImage ? <p className="job-preview__note">{copy.coverReused}</p> : <p className="job-preview__note">{copy.coverImage}</p>}
         </div>
       ) : null}
 
@@ -71,7 +88,7 @@ export default function JobResultCard({ job }: JobResultCardProps) {
             preload="metadata"
             className="job-preview__video"
           />
-          <p className="job-preview__note">微动视频</p>
+          <p className="job-preview__note">{copy.motionVideo}</p>
         </div>
       ) : null}
 
@@ -87,23 +104,23 @@ export default function JobResultCard({ job }: JobResultCardProps) {
       ) : null}
 
       <dl className="job-result">
-        <ResultRow label="Motion provider" value={job.motionProvider} />
-        <ResultRow label="Motion preset" value={motionPreset || null} />
-        <ResultRow label="VFX asset" value={job.vfxAssetId} />
-        <ResultRow label="视频画面图" value={job.videoImagePath} />
-        <ResultRow label="封面图" value={job.coverImagePath} />
-        <ResultRow label="微动视频" value={job.motionVideoPath} />
-        <ResultRow label="Master audio" value={job.masterAudioPath} />
-        <ResultRow label="Final video" value={job.finalVideoPath} />
-        <ResultRow label="YouTube video id" value={job.youtubeVideoId} />
-        <ResultRow label="Error code" value={job.errorCode} />
-        <ResultRow label="Error message" value={job.errorMessage} />
+        <ResultRow label={copy.motionProvider} value={job.motionProvider} />
+        <ResultRow label={copy.motionPreset} value={motionPreset || null} />
+        <ResultRow label={copy.vfxAsset} value={job.vfxAssetId} />
+        <ResultRow label={copy.videoImage} value={job.videoImagePath} />
+        <ResultRow label={copy.coverImage} value={job.coverImagePath} />
+        <ResultRow label={copy.motionVideo} value={job.motionVideoPath} />
+        <ResultRow label={copy.masterAudio} value={job.masterAudioPath} />
+        <ResultRow label={copy.finalVideo} value={job.finalVideoPath} />
+        <ResultRow label={copy.youtubeVideoId} value={job.youtubeVideoId} />
+        <ResultRow label={copy.errorCode} value={job.errorCode} />
+        <ResultRow label={copy.errorMessage} value={job.errorMessage} />
       </dl>
 
       {job.youtubeUrl ? (
         <p className="job-result__link">
           <a href={job.youtubeUrl} target="_blank" rel="noreferrer">
-            Open YouTube video
+            {copy.openYouTubeVideo}
           </a>
         </p>
       ) : null}

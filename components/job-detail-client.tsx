@@ -39,13 +39,45 @@ type JobRecord = {
 
 type JobDetailClientProps = {
   initialJob: JobRecord;
+  copy: {
+    eyebrow: string;
+    retry: string;
+    retrying: string;
+    result: string;
+    artifacts: string;
+    status: string;
+    progress: string;
+    duration: string;
+    master: string;
+    provider: string;
+    motionProvider: string;
+    motionPreset: string;
+    motionClip: string;
+    vfxAsset: string;
+    created: string;
+    updated: string;
+    videoImage: string;
+    coverImage: string;
+    coverReused: string;
+    motionVideo: string;
+    masterAudio: string;
+    finalVideo: string;
+    youtubeVideoId: string;
+    errorCode: string;
+    errorMessage: string;
+    openYouTubeVideo: string;
+    none: string;
+    auto: string;
+    statusLabels: Record<string, string>;
+    stageLabels: Record<string, string>;
+  };
 };
 
 function isTerminalStatus(status: string) {
   return status === "completed" || status === "failed";
 }
 
-export default function JobDetailClient({ initialJob }: JobDetailClientProps) {
+export default function JobDetailClient({ initialJob, copy }: JobDetailClientProps) {
   const [job, setJob] = useState(initialJob);
   const [isRetrying, setIsRetrying] = useState(false);
 
@@ -101,7 +133,7 @@ export default function JobDetailClient({ initialJob }: JobDetailClientProps) {
   return (
     <>
       <div className="card card--detail-header">
-        <p className="eyebrow">Job</p>
+        <p className="eyebrow">{copy.eyebrow}</p>
         <h1>{job.theme}</h1>
         <p className="lede">
           {job.style} · {Math.round(job.durationTargetSec)}s · {job.provider}
@@ -109,8 +141,8 @@ export default function JobDetailClient({ initialJob }: JobDetailClientProps) {
         <p className="job-meta">ID: {job.id}</p>
       </div>
 
-      <JobStatusCard job={job} onRetry={handleRetry} isRetrying={isRetrying} />
-      <JobResultCard job={job} />
+      <JobStatusCard job={job} onRetry={handleRetry} isRetrying={isRetrying} copy={copy} />
+      <JobResultCard job={job} copy={copy} />
     </>
   );
 }

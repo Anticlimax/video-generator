@@ -5,6 +5,24 @@ import { useRouter } from "next/navigation";
 
 type ScheduleFormProps = {
   mode?: "create" | "edit";
+  copy: {
+    type: string;
+    daily: string;
+    weekly: string;
+    time: string;
+    weekday: string;
+    weekdays: [string, string, string, string, string, string, string];
+    theme: string;
+    style: string;
+    duration: string;
+    durationHint: string;
+    provider: string;
+    publishToYouTube: string;
+    save: string;
+    saving: string;
+    create: string;
+    creating: string;
+  };
   scheduleId?: string;
   initialValues?: {
     kind?: string;
@@ -54,9 +72,10 @@ function toMessage(error: unknown) {
 
 export default function ScheduleForm({
   mode = "create",
+  copy,
   scheduleId,
   initialValues
-}: ScheduleFormProps = {}) {
+}: ScheduleFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -108,50 +127,51 @@ export default function ScheduleForm({
   return (
     <form className="card form schedule-form" onSubmit={handleSubmit}>
       <label>
-        Schedule type
+        {copy.type}
         <select name="kind" value={kind} onChange={(event) => setKind(event.target.value)}>
-          <option value="daily">Daily</option>
-          <option value="weekly">Weekly</option>
+          <option value="daily">{copy.daily}</option>
+          <option value="weekly">{copy.weekly}</option>
         </select>
       </label>
 
       <label>
-        Time
+        {copy.time}
         <input name="time" type="time" defaultValue={initialValues?.time || ""} required />
       </label>
 
       {kind === "weekly" ? (
         <label>
-          Weekday
+          {copy.weekday}
           <select name="weekday" defaultValue={String(initialValues?.weekday ?? 1)}>
-            <option value="0">Sunday</option>
-            <option value="1">Monday</option>
-            <option value="2">Tuesday</option>
-            <option value="3">Wednesday</option>
-            <option value="4">Thursday</option>
-            <option value="5">Friday</option>
-            <option value="6">Saturday</option>
+            <option value="0">{copy.weekdays[0]}</option>
+            <option value="1">{copy.weekdays[1]}</option>
+            <option value="2">{copy.weekdays[2]}</option>
+            <option value="3">{copy.weekdays[3]}</option>
+            <option value="4">{copy.weekdays[4]}</option>
+            <option value="5">{copy.weekdays[5]}</option>
+            <option value="6">{copy.weekdays[6]}</option>
           </select>
         </label>
       ) : null}
 
       <label>
-        Theme
+        {copy.theme}
         <input name="theme" placeholder="storm city" defaultValue={initialValues?.theme || ""} required />
       </label>
 
       <label>
-        Style
+        {copy.style}
         <input name="style" placeholder="cinematic storm ambience" defaultValue={initialValues?.style || ""} required />
       </label>
 
       <label>
-        Duration
-        <input name="duration" placeholder="30m" defaultValue={initialValues?.duration || ""} required />
+        {copy.duration}
+        <input name="duration" placeholder="30m or 1800" defaultValue={initialValues?.duration || ""} required />
+        <span className="form-hint">{copy.durationHint}</span>
       </label>
 
       <label>
-        Provider
+        {copy.provider}
         <select name="provider" defaultValue={initialValues?.provider || "musicgpt"}>
           <option value="musicgpt">MusicGPT</option>
           <option value="elevenlabs">ElevenLabs</option>
@@ -161,13 +181,13 @@ export default function ScheduleForm({
 
       <label className="job-form__toggle">
         <input type="checkbox" name="publishToYouTube" defaultChecked={initialValues?.publishToYouTube || false} />
-        <span>Publish to YouTube after generation</span>
+        <span>{copy.publishToYouTube}</span>
       </label>
 
       {error ? <p className="job-form__error">{error}</p> : null}
 
       <button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? (mode === "edit" ? "Saving..." : "Creating...") : mode === "edit" ? "Save schedule" : "Create schedule"}
+        {isSubmitting ? (mode === "edit" ? copy.saving : copy.creating) : mode === "edit" ? copy.save : copy.create}
       </button>
     </form>
   );

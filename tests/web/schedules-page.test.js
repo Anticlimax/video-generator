@@ -14,7 +14,7 @@ test("schedules page uses a dedicated schedule form component", () => {
   const pageSource = readText("app/schedules/page.tsx");
   assert.match(pageSource, /from\s+["']\.\.\/\.\.\/components\/schedule-form["']/);
   assert.match(pageSource, /from\s+["']\.\.\/\.\.\/components\/schedules-list["']/);
-  assert.match(pageSource, /<ScheduleForm\s*\/>/);
+  assert.match(pageSource, /<ScheduleForm\b/);
   assert.match(pageSource, /<SchedulesList\b/);
 });
 
@@ -31,13 +31,15 @@ test("schedule form exposes daily and weekly inputs and submits to schedules api
   assert.match(formSource, /name=["']publishToYouTube["']/);
   assert.match(formSource, /type=["']submit["']/);
   assert.match(formSource, /\/api\/schedules/);
+  assert.match(formSource, /placeholder=["']30m or 1800["']/);
+  assert.match(formSource, /durationHint/);
 });
 
 test("schedules list exposes toggle and run-now actions", () => {
   const listSource = readText("components/schedules-list.tsx");
 
   assert.match(listSource, /toggle/i);
-  assert.match(listSource, /run-now/i);
+  assert.match(listSource, /runNow/i);
   assert.match(listSource, /delete/i);
   assert.match(listSource, /\/schedules\/\$\{schedule\.id\}/);
   assert.match(listSource, /\/jobs\/\$\{schedule\.lastJobId\}/);
